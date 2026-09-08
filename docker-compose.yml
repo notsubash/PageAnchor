@@ -1,0 +1,8 @@
+name: pageanchor
+
+# LanceDB is embedded at LANCEDB_URI (default ./corpus/lancedb).
+# No vector database container is required.
+# The API service is added in Phase 3. An ingest profile may be added in Phase 1
+# if Docling needs Linux.
+
+services: {}
