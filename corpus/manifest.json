@@ -1,0 +1,88 @@
+{
+  "version": "1.0.0",
+  "ingest_version": "1",
+  "frozen_at": "2026-09-08",
+  "documents": [
+    {
+      "id": "arxiv-2407-colpali",
+      "title": "ColPali: Efficient Document Retrieval with Vision Language Models",
+      "path": "pdfs/arxiv-2407-colpali.pdf",
+      "pages": 26,
+      "sha256": "852ec724f3d48316265611579f4c556a14fea24f29360b5929d02e4604662631",
+      "license": "arXiv non-exclusive",
+      "source_url": "https://arxiv.org/abs/2407.01449",
+      "download_url": "https://arxiv.org/pdf/2407.01449"
+    },
+    {
+      "id": "arxiv-2204-layoutlmv3",
+      "title": "LayoutLMv3: Pre-training for Document AI with Unified Text and Image Masking",
+      "path": "pdfs/arxiv-2204-layoutlmv3.pdf",
+      "pages": 10,
+      "sha256": "bd5395610755a49e6419c406e651906e688e7a0cfe155b3c43566469dfd641fe",
+      "license": "arXiv non-exclusive",
+      "source_url": "https://arxiv.org/abs/2204.08387",
+      "download_url": "https://arxiv.org/pdf/2204.08387"
+    },
+    {
+      "id": "arxiv-1606-squad",
+      "title": "SQuAD: 100,000+ Questions for Machine Comprehension of Text",
+      "path": "pdfs/arxiv-1606-squad.pdf",
+      "pages": 10,
+      "sha256": "5169f9424ad6078815b99f5aa83724f42fa6826cedfb8ae303a8091d15c8450c",
+      "license": "arXiv non-exclusive",
+      "source_url": "https://arxiv.org/abs/1606.05250",
+      "download_url": "https://arxiv.org/pdf/1606.05250"
+    },
+    {
+      "id": "arxiv-1804-glue",
+      "title": "GLUE: A Multi-Task Benchmark and Analysis Platform for Natural Language Understanding",
+      "path": "pdfs/arxiv-1804-glue.pdf",
+      "pages": 20,
+      "sha256": "4c1aaf622c6ee3166bb4af2999b866e05019e5a35ac5f832018a887e7b44508a",
+      "license": "arXiv non-exclusive",
+      "source_url": "https://arxiv.org/abs/1804.07461",
+      "download_url": "https://arxiv.org/pdf/1804.07461"
+    },
+    {
+      "id": "bls-cpi-20250115",
+      "title": "Consumer Price Index — January 2025",
+      "path": "pdfs/bls-cpi-20250115.pdf",
+      "pages": 39,
+      "sha256": "4ecd75afc137c99301a8699d5ed97698a61b3a0f6f631a3dc73ed57b43c73abc",
+      "license": "US government work, public domain",
+      "source_url": "https://www.bls.gov/news.release/archives/cpi_01152025.pdf",
+      "download_url": "https://www.bls.gov/news.release/archives/cpi_01152025.pdf",
+      "notes": "Dated BLS archive PDF (not the live news-release URL, which changes)."
+    },
+    {
+      "id": "cdc-mmwr-7331a1",
+      "title": "Mortality in the United States - Provisional Data, 2023",
+      "path": "pdfs/cdc-mmwr-7331a1.pdf",
+      "pages": 5,
+      "sha256": "d42b43473cf3c27e4dd4f1cc0caa4ed697de4ba65c08e2d1db59817364885302",
+      "license": "US government work, public domain",
+      "source_url": "https://www.cdc.gov/mmwr/volumes/73/wr/pdfs/mm7331a1-H.pdf",
+      "download_url": "https://www.cdc.gov/mmwr/volumes/73/wr/pdfs/mm7331a1-H.pdf"
+    },
+    {
+      "id": "nasa-roman-slides",
+      "title": "Nancy Grace Roman Space Telescope: Expanding Our View",
+      "path": "pdfs/nasa-roman-slides.pdf",
+      "pages": 35,
+      "sha256": "e2e12f0a4a31e54e466a78412d7ac37f2cacdce1bba6e45a380c08076c8e49e3",
+      "license": "US government work, public domain (NASA insignia not for endorsement)",
+      "source_url": "https://science.nasa.gov/mission/roman-space-telescope/roman-community-events-files/",
+      "download_url": "https://assets.science.nasa.gov/content/dam/science/missions/rst/events/roman-expanding-our-view-slide-deck.pdf"
+    },
+    {
+      "id": "arxiv-1412-adam",
+      "title": "Adam: A Method for Stochastic Optimization",
+      "path": "pdfs/arxiv-1412-adam.pdf",
+      "pages": 15,
+      "sha256": "eab9c73ae2ceda884b94830bda99312254bac4806f6c9f045cbab90721ecda31",
+      "license": "arXiv non-exclusive",
+      "source_url": "https://arxiv.org/abs/1412.6980",
+      "download_url": "https://arxiv.org/pdf/1412.6980"
+    }
+  ]
+}
