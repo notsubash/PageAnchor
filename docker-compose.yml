@@ -2,7 +2,20 @@ name: pageanchor
 
 # LanceDB is embedded at LANCEDB_URI (default ./corpus/lancedb).
 # No vector database container is required.
-# The API service is added in Phase 3. An ingest profile may be added in Phase 1
-# if Docling needs Linux.
 
-services: {}
+services:
+  ingest:
+    profiles: ["ingest"]
+    image: python:3.11-bookworm
+    working_dir: /work
+    volumes:
+      - ./:/work
+    env_file:
+      - .env
+    environment:
+      PAGEANCHOR_CORPUS_ROOT: /work/corpus
+      LANCEDB_URI: /work/corpus/lancedb
+    command:
+      - bash
+      - -lc
+      - pip install -q uv && uv sync --extra ingest && uv run pageanchor ingest --all
