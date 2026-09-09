@@ -6,6 +6,23 @@ name: pageanchor
 #   "uv sync --extra ingest --extra visual && uv run pageanchor ingest --visual --all"
 
 services:
+  api:
+    image: python:3.11-bookworm
+    working_dir: /work
+    volumes:
+      - ./:/work
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      PAGEANCHOR_CORPUS_ROOT: /work/corpus
+      LANCEDB_URI: /work/corpus/lancedb
+    command:
+      - bash
+      - -lc
+      - pip install -q uv && uv sync --extra api && uv run uvicorn pageanchor.api.main:app --host 0.0.0.0 --port 8000
+
   ingest:
     profiles: ["ingest"]
     image: python:3.11-bookworm

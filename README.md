@@ -26,7 +26,7 @@ Query and passage embeddings truncate at 1024 tokens. Region chunks are 1500 cha
 Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
-uv sync --extra dev
+uv sync --extra dev --extra api
 cp .env.example .env   # set DEEPSEEK_API_KEY
 uv run pytest
 uv run ruff check .
@@ -58,3 +58,27 @@ docker compose --profile ingest run --rm ingest bash -lc "uv sync --extra ingest
 ```
 
 CI runs pytest and ruff only. It does not download the corpus, Docling, or GPU models.
+
+## HTTP API and web overlay
+
+Same `GroundedAnswer` as `pageanchor ask`, drawn on the ingested page PNG.
+
+```bash
+uv run --extra api python -m uvicorn pageanchor.api.main:app --reload --port 8000
+```
+
+```bash
+cd apps/web
+npm install
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000). The browser talks only to `http://localhost:8000` (CORS is that origin only). Override the API URL with `NEXT_PUBLIC_API_URL`.
+
+```bash
+curl -s http://localhost:8000/health
+curl -s http://localhost:8000/v1/answer -H "content-type: application/json" \
+  -d "{\"question\":\"What is the title of Table A in the January 2025 CPI release?\",\"mode\":\"hybrid\",\"strict\":true}"
+```
+
+`docker compose up api` bind-mounts `corpus/` (LanceDB stays on disk). Run `npm run dev` in `apps/web` next to it. If the visual table is missing, switch the UI mode to `text`.

@@ -20,5 +20,9 @@ corpus/pages/
 corpus/regions/
 corpus/lancedb/
 
+node_modules/
+.next/
+
 .DS_Store
 Thumbs.db
+.impeccable/
