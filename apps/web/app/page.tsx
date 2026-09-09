@@ -1,0 +1,247 @@
+"use client";
+
+import { FormEvent, useState } from "react";
+
+import {
+  Citation,
+  GroundedAnswer,
+  RetrievalMode,
+  pagePngUrl,
+  postAnswer,
+} from "@/lib/api";
+
+const MODES: RetrievalMode[] = ["text", "visual", "hybrid"];
+
+export default function Home() {
+  const [question, setQuestion] = useState("");
+  const [mode, setMode] = useState<RetrievalMode>("hybrid");
+  const [strict, setStrict] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<GroundedAnswer | null>(null);
+  const [selected, setSelected] = useState<Citation | null>(null);
+
+  async function onAsk(event: FormEvent) {
+    event.preventDefault();
+    const asked = question.trim();
+    if (!asked) {
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await postAnswer({ question: asked, mode, strict });
+      setResult(data);
+      setSelected(data.citations[0] ?? null);
+    } catch (err) {
+      setResult(null);
+      setSelected(null);
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const frame = selected?.page;
+  const frameLabel =
+    frame != null ? `FRAME ${String(frame).padStart(3, "0")}` : "FRAME ---";
+
+  return (
+    <div className="reader">
+      <header className="bezel-top">
+        <h1 className="wordmark">PageAnchor</h1>
+        <p className="thesis">Every answer cites a verifiable region, or it refuses.</p>
+        <div className="frame-readout" aria-live="polite">
+          {frameLabel}
+        </div>
+      </header>
+      <div className="deck">
+        <section className="catalog" aria-label="Ask">
+          <h2 className="vh">Ask</h2>
+          <form className="ask" onSubmit={onAsk}>
+            <div className="modes" role="group" aria-label="Retrieval mode">
+              {MODES.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  className="mode"
+                  aria-pressed={mode === item}
+                  onClick={() => setMode(item)}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+            <label className="latch">
+              <input
+                type="checkbox"
+                checked={strict}
+                onChange={(event) => setStrict(event.target.checked)}
+              />
+              Strict
+            </label>
+            <textarea
+              value={question}
+              onChange={(event) => setQuestion(event.target.value)}
+              placeholder="Ask the frozen corpus"
+              required
+            />
+            <button className="load" type="submit" disabled={loading} aria-busy={loading}>
+              {loading ? "Advancing" : "Load frame"}
+            </button>
+          </form>
+          {error ? <p className="banner fault">{error}</p> : null}
+          {result?.abstain ? (
+            <p className="banner abstain">
+              Abstained: {result.abstain_reason ?? "abstain"}. The answer well stays empty.
+            </p>
+          ) : null}
+          {result && !result.abstain && result.answer ? (
+            <div className="well-plate">
+              <p className="plate-label">Answer</p>
+              <p className="answer">{result.answer}</p>
+            </div>
+          ) : null}
+          {result && result.citations.length > 0 ? (
+            <ul className="citations">
+              {result.citations.map((citation, index) => (
+                <li key={`${citation.region_id ?? citation.quote}-${index}`}>
+                  <button
+                    type="button"
+                    aria-current={
+                      selected?.region_id === citation.region_id &&
+                      selected?.quote === citation.quote
+                    }
+                    onClick={() => setSelected(citation)}
+                  >
+                    <div className="cite-meta">
+                      <span>
+                        {citation.doc_id} p.{citation.page}
+                      </span>
+                      {citation.verified ? (
+                        <img
+                          className="stamp"
+                          src="/stamps/verified-stamp.png"
+                          alt="verified"
+                        />
+                      ) : (
+                        <span className="bad">unverified</span>
+                      )}
+                    </div>
+                    <p className="quote">{citation.quote}</p>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+
+        <section className="gate" aria-label="Page">
+          <div className="hood">
+            <div className="sprocket" aria-hidden="true" />
+            <div className={`well${loading ? " busy" : ""}`}>
+              {selected ? (
+                <div className="stage">
+                  <img
+                    alt={`Page ${selected.page} of ${selected.doc_id}`}
+                    src={pagePngUrl(selected.doc_id, selected.page)}
+                  />
+                  <div
+                    className="bbox"
+                    style={{
+                      left: `${selected.bbox[0] * 100}%`,
+                      top: `${selected.bbox[1] * 100}%`,
+                      width: `${(selected.bbox[2] - selected.bbox[0]) * 100}%`,
+                      height: `${(selected.bbox[3] - selected.bbox[1]) * 100}%`,
+                    }}
+                  />
+                </div>
+              ) : result?.abstain ? (
+                <div className="leader">
+                  <img src="/stamps/no-frame-stamp.png" alt="" />
+                  <p>
+                    Abstained ({result.abstain_reason}). Citations stay on the left bezel if
+                    present.
+                  </p>
+                </div>
+              ) : null}
+            </div>
+            <div className="sprocket" aria-hidden="true" />
+          </div>
+          <p className="gate-meta">
+            {selected ? selected.doc_id : "Gate idle"}
+            <span className="odometer">{frameLabel}</span>
+          </p>
+        </section>
+
+        <section className="index" aria-label="Debug">
+          <h2 className="panel-title">Trace</h2>
+          {result ? (
+            <>
+              <p className="debug-id">trace {result.trace_id}</p>
+              <table className="telemetry">
+                <caption>Hits</caption>
+                <thead>
+                  <tr>
+                    <th>Doc</th>
+                    <th>Pg</th>
+                    <th>Score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.trace.hits.map((hit) => (
+                    <tr key={`${hit.doc_id}-${hit.page}-${hit.source}`}>
+                      <td>{hit.doc_id}</td>
+                      <td>{hit.page}</td>
+                      <td>{hit.score.toFixed(3)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <table className="telemetry">
+                <caption>Verify</caption>
+                <thead>
+                  <tr>
+                    <th>Ok</th>
+                    <th>Region</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.trace.verify.length === 0 ? (
+                    <tr>
+                      <td colSpan={2}>none</td>
+                    </tr>
+                  ) : (
+                    result.trace.verify.map((row) => (
+                      <tr key={`${row.region_id}-${row.quote}`}>
+                        <td>{row.ok ? "yes" : "no"}</td>
+                        <td>{row.region_id}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+              <table className="telemetry">
+                <caption>Timings ms</caption>
+                <tbody>
+                  {Object.entries(result.trace.timings_ms).map(([name, value]) => (
+                    <tr key={name}>
+                      <td>{name}</td>
+                      <td>{value.toFixed(0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <details>
+                <summary>Trace JSON</summary>
+                <pre>{JSON.stringify(result.trace, null, 2)}</pre>
+              </details>
+            </>
+          ) : (
+            <p className="empty">The TRACE strip prints after /v1/answer returns.</p>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}
