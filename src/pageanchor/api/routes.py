@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import lancedb
@@ -10,13 +9,20 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from pageanchor.api.deps import get_settings
-from pageanchor.config import DOC_ID_RE, Settings, under_root
+from pageanchor.config import Settings
+from pageanchor.corpus import (
+    find_region,
+    get_document,
+    load_manifest,
+    load_regions,
+    page_png_path,
+)
 from pageanchor.ground.answer import grounded_answer
 from pageanchor.ground.regions import select_regions
 from pageanchor.ground.verify import verify_quote
 from pageanchor.ids import new_trace_id
 from pageanchor.ingest.index_text import table_names
-from pageanchor.models import Region, RetrievalMode
+from pageanchor.models import RetrievalMode
 from pageanchor.retrieve.hybrid import search_hybrid
 from pageanchor.retrieve.text import search_text
 from pageanchor.retrieve.visual import search_visual
@@ -58,16 +64,12 @@ def health(settings: Settings = Depends(get_settings)) -> dict:
 
 @router.get("/v1/corpus")
 def corpus(settings: Settings = Depends(get_settings)) -> dict:
-    return _traced(**_manifest(settings.corpus_root))
+    return _traced(**_http_call(load_manifest, settings.corpus_root))
 
 
 @router.get("/v1/docs/{doc_id}")
 def doc_row(doc_id: str, settings: Settings = Depends(get_settings)) -> dict:
-    doc_id = _require_doc_id(doc_id)
-    for doc in _manifest(settings.corpus_root).get("documents", []):
-        if doc.get("id") == doc_id:
-            return _traced(**doc)
-    raise HTTPException(404, "unknown doc_id")
+    return _traced(**_http_call(get_document, settings.corpus_root, doc_id))
 
 
 @router.get("/v1/docs/{doc_id}/pages/{page}")
@@ -76,10 +78,7 @@ def page_png(
     page: int = PathParam(ge=1),
     settings: Settings = Depends(get_settings),
 ) -> FileResponse:
-    doc_id = _require_doc_id(doc_id)
-    path = under_root(settings.corpus_root, "pages", doc_id, f"p{page}.png")
-    if not path.is_file():
-        raise HTTPException(404, "page image missing")
+    path = _http_call(page_png_path, settings.corpus_root, doc_id, page)
     return FileResponse(path, media_type="image/png")
 
 
@@ -89,8 +88,8 @@ def page_regions(
     page: int = PathParam(ge=1),
     settings: Settings = Depends(get_settings),
 ) -> dict:
-    regions = [region.model_dump() for region in _load_regions(settings.corpus_root, doc_id, page)]
-    return _traced(regions=regions)
+    regions = _http_call(load_regions, settings.corpus_root, doc_id, page)
+    return _traced(regions=[region.model_dump() for region in regions])
 
 
 @router.post("/v1/search")
@@ -105,24 +104,22 @@ def search(body: SearchBody) -> dict:
 
 @router.post("/v1/evidence")
 def evidence(body: EvidenceBody, settings: Settings = Depends(get_settings)) -> dict:
-    try:
-        regions = select_regions(
-            body.query,
-            _require_doc_id(body.doc_id),
-            body.page,
-            max_regions=body.max_regions,
-            corpus_root=settings.corpus_root,
-        )
-    except FileNotFoundError as exc:
-        raise HTTPException(404, str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
+    regions = _http_call(
+        select_regions,
+        body.query,
+        body.doc_id,
+        body.page,
+        body.max_regions,
+        corpus_root=settings.corpus_root,
+    )
     return _traced(regions=[region.model_dump() for region in regions])
 
 
 @router.post("/v1/verify")
 def verify(body: VerifyBody, settings: Settings = Depends(get_settings)) -> dict:
-    region = _find_region(settings.corpus_root, body.doc_id, body.page, body.region_id)
+    region = _http_call(
+        find_region, settings.corpus_root, body.doc_id, body.page, body.region_id
+    )
     ok = verify_quote(body.quote, region.text)
     return _traced(
         ok=ok,
@@ -149,34 +146,13 @@ def _traced(**fields) -> dict:
     return {"trace_id": new_trace_id(), **fields}
 
 
-def _require_doc_id(doc_id: str) -> str:
-    if not DOC_ID_RE.match(doc_id):
-        raise HTTPException(400, f"invalid doc_id {doc_id!r}")
-    return doc_id
-
-
-def _manifest(root: Path) -> dict:
-    path = root / "manifest.json"
-    if not path.is_file():
-        raise HTTPException(404, "manifest missing")
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
-def _load_regions(root: Path, doc_id: str, page: int | None = None) -> list[Region]:
-    path = under_root(root, "regions", f"{_require_doc_id(doc_id)}.json")
-    if not path.is_file():
-        raise HTTPException(404, "regions missing")
-    regions = [Region.model_validate(item) for item in json.loads(path.read_text(encoding="utf-8"))]
-    if page is None:
-        return regions
-    return [region for region in regions if region.page == page]
-
-
-def _find_region(root: Path, doc_id: str, page: int, region_id: str) -> Region:
-    for region in _load_regions(root, doc_id, page):
-        if region.region_id == region_id:
-            return region
-    raise HTTPException(404, "region not found")
+def _http_call(fn, *args, **kwargs):
+    try:
+        return fn(*args, **kwargs)
+    except FileNotFoundError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
 
 
 def _table_counts(uri: Path) -> tuple[bool, dict[str, int]]:

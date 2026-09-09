@@ -15,7 +15,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install
-        run: uv sync --extra dev --extra api
+        run: uv sync --extra dev --extra api --extra mcp
       - name: Ruff
         run: uv run ruff check .
       - name: Pytest
