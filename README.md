@@ -15,7 +15,7 @@ The answer generator is **DeepSeek V4** (`deepseek-v4-flash` by default) via the
 Retrieval encoders:
 
 - **Text:** `Qwen/Qwen3-Embedding-0.6B` (local, Apache-2.0) through `sentence-transformers`. DeepSeek has no embeddings API.
-- **Visual:** `vidore/colqwen2-v1.0` is configured but not wired into `ask` yet.
+- **Visual:** `vidore/colqwen2-v1.0` (ColQwen2, Apache-2.0) through `colpali-engine`. Page multi-vectors go in LanceDB table `pageanchor_visual`; queries use brute-force numpy MaxSim. Install with `uv sync --extra visual`. Default `ask` mode is `hybrid` (RRF of text + visual pages).
 
 Layout defaults to **PyMuPDF** text blocks so gold quotes stay stable on Windows. Set `PAGEANCHOR_LAYOUT=docling` (and `uv sync --extra ingest`) to use Docling instead; that changes region text and is a freeze bump.
 
@@ -32,16 +32,29 @@ uv run pytest
 uv run ruff check .
 ```
 
+Visual retrieve is optional and heavy (torch + ColQwen2):
+
+```bash
+uv sync --extra visual
+```
+
 ## Corpus, ask, eval
 
 ```bash
 uv run pageanchor ingest --all
-uv run pageanchor ask "What benchmark does ColPali introduce?" --mode text
-uv run pageanchor eval --gold corpus/eval/gold_questions.jsonl --modes text,text+verify --out eval/results/2026-09-08
+uv run pageanchor ingest --visual --all
+uv run pageanchor ask "What benchmark does ColPali introduce?" --mode hybrid
+uv run pageanchor eval --gold corpus/eval/gold_questions.jsonl --modes text,visual,hybrid,hybrid+verify --out eval/results/2026-09-09
 ```
 
-`ingest --all` is idempotent: the same PDF hash with existing pages, regions, and LanceDB rows is skipped.
+`ingest --all` is idempotent: the same PDF hash with existing pages, regions, and LanceDB rows is skipped. `--visual` adds ColQwen2 page vectors; re-running skips docs already in `pageanchor_visual`.
 
-If Docling is required, `docker compose --profile ingest up` runs ingest in Linux.
+If Docling is painful on Windows, `docker compose --profile ingest up` runs text ingest in Linux.
+
+For ColQwen2 visual indexing:
+
+```bash
+docker compose --profile ingest run --rm ingest bash -lc "uv sync --extra ingest --extra visual && uv run pageanchor ingest --visual --all"
+```
 
 CI runs pytest and ruff only. It does not download the corpus, Docling, or GPU models.

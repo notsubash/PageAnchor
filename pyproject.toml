@@ -19,6 +19,7 @@ dependencies = [
 api = ["fastapi", "uvicorn"]
 mcp = ["mcp"]
 ingest = ["docling"]
+visual = ["colpali-engine>=0.3.4"]
 dev = ["pytest", "ruff", "httpx"]
 
 [project.scripts]
@@ -33,6 +34,7 @@ package = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["gpu: real ColQwen2; skipped in CI"]
 
 [tool.ruff]
 line-length = 100

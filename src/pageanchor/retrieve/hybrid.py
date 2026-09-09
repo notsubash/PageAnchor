@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from pageanchor.models import PageHit
+from pageanchor.retrieve.text import search_text
+from pageanchor.retrieve.visual import search_visual
 
 
 def rrf_fuse(
@@ -28,3 +30,19 @@ def rrf_fuse(
         PageHit(doc_id=doc_id, page=page, score=score, source="hybrid")
         for (doc_id, page), score in ranked[:k]
     ]
+
+
+def search_hybrid(
+    query: str,
+    k: int,
+    *,
+    lancedb_uri: str | None = None,
+    embed_query=None,
+    embed_visual_query=None,
+) -> list[PageHit]:
+    fuse_k = max(k, 60)
+    text_hits = search_text(query, fuse_k, lancedb_uri=lancedb_uri, embed_query=embed_query)
+    visual_hits = search_visual(
+        query, fuse_k, lancedb_uri=lancedb_uri, embed_query=embed_visual_query
+    )
+    return rrf_fuse(text_hits, visual_hits, k=k)

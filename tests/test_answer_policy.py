@@ -23,6 +23,13 @@ def test_empty_hits_abstain_no_hits():
     assert result.citations == []
 
 
+def test_empty_hits_visual_and_hybrid_keep_mode():
+    for mode in ("visual", "hybrid"):
+        result = grounded_answer("anything", mode, hits=[])
+        assert result.abstain_reason == "no_hits"
+        assert result.trace.retrieval_mode == mode
+
+
 def test_bad_quote_abstains_when_strict():
     region = _region("THE_TOKEN_42 is on the page")
 

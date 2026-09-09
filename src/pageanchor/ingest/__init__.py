@@ -18,6 +18,7 @@ from pageanchor.config import (
 from pageanchor.models import Region
 
 from .index_text import EmbedFn, has_indexed_doc, index_text
+from .index_visual import EmbedPagesFn, has_indexed_visual_doc, index_visual
 from .layout import extract_regions
 from .render import render_pdf
 
@@ -35,6 +36,8 @@ def ingest_document(
     corpus_root: Path,
     *,
     embed: EmbedFn | None = None,
+    visual: bool = False,
+    visual_embed: EmbedPagesFn | None = None,
     lancedb_uri: str | None = None,
 ) -> dict[str, Any]:
     doc_id = _require_doc_id(doc["id"])
@@ -54,7 +57,8 @@ def ingest_document(
     engine = layout_engine()
     regions_ok = regions_path.is_file() and _stored_layout(regions_path) == engine
     indexed = has_indexed_doc(uri, doc_id)
-    if pngs_ok and regions_ok and indexed:
+    visual_ok = (not visual) or has_indexed_visual_doc(uri, doc_id)
+    if pngs_ok and regions_ok and indexed and visual_ok:
         return {"skipped": True, "doc_id": doc_id}
     if not pngs_ok:
         render_pdf(pdf_path, pages_dir)
@@ -74,6 +78,13 @@ def ingest_document(
     if not indexed:
         print(f"indexing {doc_id} ({len(regions)} regions)", flush=True)
         index_text(regions, uri, embed=embed)
+    if visual and not visual_ok:
+        page_pngs = [
+            (doc_id, page, pages_dir / f"p{page}.png")
+            for page in range(1, expected_pages + 1)
+        ]
+        print(f"indexing visual {doc_id} ({len(page_pngs)} pages)", flush=True)
+        index_visual(page_pngs, uri, embed=visual_embed)
     return {"skipped": False, "doc_id": doc_id}
 
 
@@ -143,6 +154,7 @@ def ingest_all(
     *,
     doc_id: str | None = None,
     all_docs: bool = False,
+    visual: bool = False,
     corpus_root: Path | None = None,
 ) -> Iterator[dict[str, Any]]:
     root = Path(corpus_root or load_settings().corpus_root)
@@ -162,4 +174,4 @@ def ingest_all(
             pdf_path.unlink()
         if not pdf_path.is_file():
             download_pdf(doc, pdf_path)
-        yield ingest_document(doc, root)
+        yield ingest_document(doc, root, visual=visual)
