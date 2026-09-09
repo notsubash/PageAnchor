@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "pageanchor": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "${workspaceFolder}",
+        "run",
+        "--extra",
+        "mcp",
+        "python",
+        "-m",
+        "pageanchor.mcp.server"
+      ],
+      "env": {
+        "PAGEANCHOR_CORPUS_ROOT": "${workspaceFolder}/corpus",
+        "LANCEDB_URI": "${workspaceFolder}/corpus/lancedb"
+      }
+    }
+  }
+}

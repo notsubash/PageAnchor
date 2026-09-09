@@ -17,7 +17,7 @@ dependencies = [
 
 [project.optional-dependencies]
 api = ["fastapi", "uvicorn"]
-mcp = ["mcp"]
+mcp = ["mcp>=2"]
 ingest = ["docling"]
 visual = ["colpali-engine>=0.3.4"]
 dev = ["pytest", "ruff", "httpx"]

@@ -15,7 +15,7 @@ The answer generator is **DeepSeek V4** (`deepseek-v4-flash` by default) via the
 Retrieval encoders:
 
 - **Text:** `Qwen/Qwen3-Embedding-0.6B` (local, Apache-2.0) through `sentence-transformers`. DeepSeek has no embeddings API.
-- **Visual:** `vidore/colqwen2-v1.0` (ColQwen2, Apache-2.0) through `colpali-engine`. Page multi-vectors go in LanceDB table `pageanchor_visual`; queries use brute-force numpy MaxSim. Install with `uv sync --extra visual`. Default `ask` mode is `hybrid` (RRF of text + visual pages).
+- **Visual:** `vidore/colqwen2-v1.0` (ColQwen2, Apache-2.0) through `colpali-engine`. Page multi-vectors go in LanceDB table `pageanchor_visual`; queries use brute-force numpy MaxSim. Install with `--extra visual` on the same `uv sync` as the extras you already use. Default `ask` mode is `hybrid` (RRF of text + visual pages).
 
 Layout defaults to **PyMuPDF** text blocks so gold quotes stay stable on Windows. Set `PAGEANCHOR_LAYOUT=docling` (and `uv sync --extra ingest`) to use Docling instead; that changes region text and is a freeze bump.
 
@@ -26,16 +26,16 @@ Query and passage embeddings truncate at 1024 tokens. Region chunks are 1500 cha
 Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
-uv sync --extra dev --extra api
+uv sync --extra dev --extra api --extra mcp
 cp .env.example .env   # set DEEPSEEK_API_KEY
 uv run pytest
 uv run ruff check .
 ```
 
-Visual retrieve is optional and heavy (torch + ColQwen2):
+Visual retrieve is optional and heavy (torch + ColQwen2). `uv sync` replaces extras, so list every extra you need:
 
 ```bash
-uv sync --extra visual
+uv sync --extra dev --extra api --extra mcp --extra visual
 ```
 
 ## Corpus, ask, eval
@@ -82,3 +82,11 @@ curl -s http://localhost:8000/v1/answer -H "content-type: application/json" \
 ```
 
 `docker compose up api` bind-mounts `corpus/` (LanceDB stays on disk). Run `npm run dev` in `apps/web` next to it. If the visual table is missing, switch the UI mode to `text`.
+
+## MCP
+
+Same `GroundedAnswer` over stdio. See [docs/MCP.md](docs/MCP.md). Cursor config lives in [`.cursor/mcp.json`](.cursor/mcp.json) (`${workspaceFolder}`, no API keys). `DEEPSEEK_API_KEY` stays in `.env`.
+
+```bash
+uv run --extra mcp python -m pageanchor.mcp.server
+```

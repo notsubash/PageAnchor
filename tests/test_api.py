@@ -230,3 +230,34 @@ def test_cors_allows_localhost_3000(corpus: Path):
         assert denied.headers.get("access-control-allow-origin") != "http://evil.example"
 
     _run(run())
+
+
+def test_invalid_doc_id_is_400(corpus: Path):
+    async def run():
+        async with await _client() as client:
+            row = await client.get("/v1/docs/bad!id")
+            evidence = await client.post(
+                "/v1/evidence",
+                json={"query": "token", "doc_id": "bad!id", "page": 1, "max_regions": 5},
+            )
+        assert row.status_code == 400
+        assert evidence.status_code == 400
+
+    _run(run())
+
+
+def test_search_and_answer_missing_lancedb_is_503(corpus: Path):
+    async def run():
+        async with await _client() as client:
+            search = await client.post(
+                "/v1/search", json={"query": "token", "k": 1, "mode": "text"}
+            )
+            answer = await client.post(
+                "/v1/answer", json={"question": "token", "mode": "text", "strict": True}
+            )
+        assert search.status_code == 503
+        assert "LanceDB not found" in search.json()["detail"]
+        assert answer.status_code == 503
+        assert "LanceDB not found" in answer.json()["detail"]
+
+    _run(run())

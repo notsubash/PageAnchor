@@ -1940,7 +1940,7 @@ requires-dist = [
     { name = "fastapi", marker = "extra == 'api'" },
     { name = "httpx", marker = "extra == 'dev'" },
     { name = "lancedb" },
-    { name = "mcp", marker = "extra == 'mcp'" },
+    { name = "mcp", marker = "extra == 'mcp'", specifier = ">=2" },
     { name = "openai" },
     { name = "pydantic", specifier = ">=2" },
     { name = "pymupdf" },
