@@ -20,7 +20,9 @@ from pageanchor.models import (
     Trace,
     VerifyResult,
 )
+from pageanchor.retrieve.hybrid import search_hybrid
 from pageanchor.retrieve.text import search_text
+from pageanchor.retrieve.visual import search_visual
 
 GenerateFn = Callable[[str, list[ScoredRegion]], "GeneratorOutput"]
 
@@ -53,7 +55,7 @@ by the system after verify.
 
 def grounded_answer(
     question: str,
-    mode: RetrievalMode,
+    mode: RetrievalMode = "hybrid",
     strict: bool = True,
     *,
     hits: list[PageHit] | None = None,
@@ -64,12 +66,13 @@ def grounded_answer(
     started = time.perf_counter()
     timings: dict[str, float] = {}
     trace_id = new_trace_id()
-    if mode != "text":
+    search_fn = {"text": search_text, "visual": search_visual, "hybrid": search_hybrid}.get(mode)
+    if search_fn is None:
         raise ValueError(f"retrieval mode {mode!r} is not implemented yet")
 
     search_started = time.perf_counter()
     if hits is None:
-        hits = search_text(question, k)
+        hits = search_fn(question, k)
     timings["search_ms"] = (time.perf_counter() - search_started) * 1000
 
     if not hits:

@@ -13,6 +13,7 @@ DEFAULT_GENERATOR_MODEL = "deepseek-v4-flash"
 DEFAULT_TEXT_EMBEDDING_MODEL = "Qwen/Qwen3-Embedding-0.6B"
 DEFAULT_VISUAL_RETRIEVE_MODEL = "vidore/colqwen2-v1.0"
 TEXT_TABLE = "pageanchor_text"
+VISUAL_TABLE = "pageanchor_visual"
 DOC_ID_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
 MAX_PDF_BYTES = 100 * 1024 * 1024
 

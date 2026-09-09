@@ -9,3 +9,16 @@ def test_ask_missing_lancedb_prints_ingest_hint(monkeypatch, tmp_path, capsys):
     err = capsys.readouterr().err
     assert "LanceDB not found" in err
     assert "pageanchor ingest" in err
+
+
+def test_ingest_visual_flag_is_passed(monkeypatch):
+    seen = {}
+
+    def fake_ingest_all(**kwargs):
+        seen.update(kwargs)
+        return iter([])
+
+    monkeypatch.setattr("pageanchor.ingest.ingest_all", fake_ingest_all)
+    assert main(["ingest", "--all", "--visual"]) == 0
+    assert seen["visual"] is True
+    assert seen["all_docs"] is True

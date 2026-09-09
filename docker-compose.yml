@@ -2,6 +2,8 @@ name: pageanchor
 
 # LanceDB is embedded at LANCEDB_URI (default ./corpus/lancedb).
 # No vector database container is required.
+# Visual index (ColQwen2): docker compose --profile ingest run --rm ingest bash -lc
+#   "uv sync --extra ingest --extra visual && uv run pageanchor ingest --visual --all"
 
 services:
   ingest:
