@@ -8,6 +8,44 @@ from pageanchor.corpus import load_regions, require_doc_id
 from pageanchor.models import ScoredRegion
 
 _TOKEN_RE = re.compile(r"[A-Za-z0-9_]+")
+_STOPWORDS = frozenset(
+    {
+        "a",
+        "an",
+        "the",
+        "and",
+        "or",
+        "of",
+        "in",
+        "on",
+        "for",
+        "to",
+        "from",
+        "with",
+        "by",
+        "as",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "what",
+        "which",
+        "who",
+        "whom",
+        "how",
+        "when",
+        "where",
+        "why",
+        "does",
+        "did",
+        "do",
+        "used",
+        "use",
+        "using",
+    }
+)
 
 
 def select_regions(
@@ -20,7 +58,9 @@ def select_regions(
 ) -> list[ScoredRegion]:
     require_doc_id(doc_id)
     root = Path(corpus_root or load_settings().corpus_root)
-    query_tokens = _tokens(query)
+    query_tokens = _tokens(query) - _STOPWORDS
+    if not query_tokens:
+        query_tokens = _tokens(query)
     scored: list[ScoredRegion] = [
         ScoredRegion(
             **region.model_dump(), score=_jaccard(query_tokens, _tokens(region.text))
