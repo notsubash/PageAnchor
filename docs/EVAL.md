@@ -34,7 +34,7 @@ Hashes in the manifest must match the PDFs on disk. Ingest refuses a mismatch. D
 | --- | --- | --- |
 | Recall@5 | answerable | Gold `(doc_id, page)` appears in `trace.hits[:5]`. |
 | Citation page hit | answerable rows that produced citations | Some citation has gold `doc_id` and a gold page. |
-| Verify pass rate | citations on **kept** (non-abstain) answers | Fraction with `verified=true`. |
+| Verify pass rate | citations on **kept** (non-abstain) answers | Fraction with `verified=true` (quote-in-region and answer-in-quote). |
 | Abstain precision | all 30 | Among abstains, share that are gold-unanswerable. |
 | Abstain recall | 6 unanswerable | Share of unanswerable rows that abstained. |
 | Latency p50 | all rows | Median `grounded_answer` wall time, ms. |
@@ -65,7 +65,7 @@ nDCG, table exact match, and cost are not scored.
 | D hybrid+verify | 0.875 | 0.923 | 1.000 | 0.353 | 1.000 | 2675 |
 | D-lite text+verify | 0.708 | 0.917 | 1.000 | 0.316 | 1.000 | 1819 |
 
-Recall@5 is 17/24 (text) and 21/24 (visual and hybrid). D verify pass equals C, so the strict path is not miswired. D-lite raises text verify pass from 0.917 to 1.000 by abstaining on the one unverified citation (q017). Abstain recall is 1.0 on the six unanswerable items. Precision is ~0.35 because 11 or 12 answerable questions were also refused (`unanswerable` or `verify_failed`).
+Recall@5 is 17/24 (text) and 21/24 (visual and hybrid). D verify pass equals C, so the strict path is not miswired. D-lite raises text verify pass from 0.917 to 1.000 by abstaining on the one unverified citation (q017). Abstain recall is 1.0 on the six unanswerable items. Precision is ~0.35 because 11 or 12 answerable questions were also refused (`unanswerable`, `verify_failed`, or `unsupported`).
 
 Recall@5 on answerable gold by type:
 
@@ -108,7 +108,7 @@ Wrong-page citation tables for each mode: `eval/results/2026-09-10/report.md` (C
 
 `RETRIEVAL_MIN_SCORE` is not wired. `low_retrieval_score` is unused.
 
-On this gold, unanswerable rows still retrieve (top-hit scores about 0.43–0.59). Answerable hits sit in the same band (about 0.50–0.73). A cutoff of `0.35` would never fire. A threshold high enough to drop unanswerable hits would also drop answerable ones. We abstain on `no_hits`, `verify_failed`, `generator_invalid`, and model `unanswerable` only.
+On this gold, unanswerable rows still retrieve (top-hit scores about 0.43–0.59). Answerable hits sit in the same band (about 0.50–0.73). A cutoff of `0.35` would never fire. A threshold high enough to drop unanswerable hits would also drop answerable ones. We abstain on `no_hits`, `verify_failed`, `unsupported`, `generator_invalid`, and model `unanswerable` only.
 
 If you tune later, record the value and the six question ids in this file. Do not pick the threshold on the full 30.
 

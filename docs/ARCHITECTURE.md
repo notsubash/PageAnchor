@@ -39,8 +39,8 @@ Layout defaults to PyMuPDF text blocks so gold quotes stay stable on Windows. `P
 1. **Retrieve pages.** `text` embeds the query with Qwen3-Embedding-0.6B and collapses chunks to `(doc_id, page)`. `visual` encodes the query with ColQwen2 and scores every page with numpy MaxSim (brute force; fine until the corpus is far past a thousand pages). Encoders use CUDA when `torch.cuda.is_available()` (override with `PAGEANCHOR_DEVICE=cpu` or `cuda`). `hybrid` is Reciprocal Rank Fusion over page keys, `k_rrf=60`. Default production mode is `hybrid`.
 2. **Select regions.** On each hit page, rank stored regions by token Jaccard with the query. Keep the global top 5.
 3. **Generate.** DeepSeek V4 (`deepseek-v4-flash` via the OpenAI SDK) must return structured `GeneratorOutput`: an answer or abstain, plus citations whose `region_id` is in the prompt and whose `quote` is a verbatim substring of that region.
-4. **Verify.** Each quote is checked with `verify_quote` against the cited region's text.
-5. **Policy.** Empty hits → `abstain_reason="no_hits"`. Unknown `region_id`, unparseable generator output, empty citations, or a null answer while not abstaining → `generator_invalid`. Generator `abstain=true` → `unanswerable`. If `strict` and any citation fails verify → `abstain=true`, `answer=None`, `abstain_reason="verify_failed"`. Citations stay on the object with `verified=false` so the trace is inspectable. There is no retry loop.
+4. **Verify.** Each quote is checked with `verify_quote` against the cited region's text. The answer is checked with `answer_in_quote` against each quote. `verified` is both.
+5. **Policy.** Empty hits → `abstain_reason="no_hits"`. Unknown `region_id`, unparseable generator output, empty citations, or a null answer while not abstaining → `generator_invalid`. Generator `abstain=true` → `unanswerable`. If `strict` and any citation fails quote-in-region → `abstain=true`, `answer=None`, `abstain_reason="verify_failed"`. If the quotes are in their regions but the answer is not a normalized substring of any citation quote, `abstain_reason="unsupported"`. Citations stay on the object with `verified=false` so the trace is inspectable. There is no retry loop.
 
 `Trace` (hits, selected regions, verify rows, timings, `trace_id`) is part of the answer, not a side log.
 
@@ -48,7 +48,7 @@ Layout defaults to PyMuPDF text blocks so gold quotes stay stable on Windows. `P
 
 Normalization is Unicode NFKC, whitespace collapsed to single spaces, strip, **case preserved**. `"ViDoRe"` does not match `"vidore"`. Table cells and proper nouns are the product.
 
-Verify is a substring check. It does not score entailment. A fluent answer can still attach a verified quote from the wrong page. That is a retrieval failure, not a verify miss, and it shows up as citation-page errors in eval.
+Verify is a substring check. It does not score entailment. `verified` requires quote-in-region and answer-in-quote. Wrong-page restatements that happen to contain the answer string can still pass; that remains a retrieval miss, scored as citation-page error.
 
 `low_retrieval_score` exists on `AbstainReason` but is unused. There is no global score cutoff; see [EVAL.md](EVAL.md).
 
@@ -60,7 +60,7 @@ Verify is a substring check. It does not score entailment. A fluent answer can s
 | CLI / eval | in-process | Same functions, JSON on stdout. |
 | MCP | stdio | Agent host spawns `python -m pageanchor.mcp.server`. Tools call core. Resources serve manifest, metadata, page PNGs, and regions. |
 
-MCP tool copy tells the agent not to state a fact until `verify_quote` is true, and not to guess page content: call `select_evidence`.
+MCP tool copy tells the agent not to state a fact until nested verify is true, and not to guess page content: call `select_evidence`.
 
 ## Pages and boxes
 

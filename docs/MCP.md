@@ -2,7 +2,7 @@
 
 Same retrieve, region, verify, and answer functions as the CLI and HTTP API, over stdio. The server imports `pageanchor` core. It does not call HTTP (see [ARCHITECTURE.md](ARCHITECTURE.md)).
 
-Do not state a fact until `verify_quote` is true. Do not guess page content; call `select_evidence`.
+Do not state a fact until nested verify is true (`quote_in_region` and `answer_in_quote`). Do not guess page content; call `select_evidence`.
 
 ## Run
 
@@ -81,5 +81,5 @@ Pages are 1-based.
 1. `search_documents`
 2. `select_evidence` on a top hit
 3. Draft from region text only
-4. `verify_quote` per claim
+4. Nested verify per claim (quote in region, answer in quote)
 5. Optional `grounded_answer` for parity with the web UI
