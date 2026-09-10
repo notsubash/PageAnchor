@@ -67,7 +67,7 @@ POST /v1/answer     { "question": "...", "mode": "hybrid", "strict": true }
 }
 ```
 
-`abstain_reason` is one of `low_retrieval_score` (unused), `no_hits`, `verify_failed`, `unanswerable`, `generator_invalid`.
+`abstain_reason` is one of `low_retrieval_score` (unused), `no_hits`, `verify_failed`, `unsupported`, `unanswerable`, `generator_invalid`.
 
 On abstain, `answer` is `null`. Failed citations remain on `citations` with `verified: false`.
 

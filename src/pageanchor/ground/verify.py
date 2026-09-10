@@ -14,3 +14,9 @@ def verify_quote(quote: str, region_text: str) -> bool:
     if not normalized_quote:
         return False
     return normalized_quote in _normalize(region_text)
+
+
+def answer_in_quote(answer: str | None, quote: str) -> bool:
+    if answer is None:
+        return False
+    return verify_quote(answer, quote)

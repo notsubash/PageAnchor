@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 from pageanchor.config import generator_client, load_settings
 from pageanchor.ground.regions import select_regions
-from pageanchor.ground.verify import verify_quote
+from pageanchor.ground.verify import answer_in_quote, verify_quote
 from pageanchor.ids import new_trace_id
 from pageanchor.models import (
     AbstainReason,
@@ -45,6 +45,8 @@ citations is a list of {region_id, quote} objects. answer is a string or null.
 Rules:
 - Each citation.quote must be a verbatim substring of that region's text.
 - citation.region_id must be one of the provided region_id values.
+- The answer string must be a verbatim substring of at least one citation.quote.
+  Use a short extractive span (a name, a number, a title), not a paraphrase.
 - If the regions do not contain the answer, abstain=true,
   abstain_reason="unanswerable", answer=null, citations=[].
 - Otherwise set abstain=false, a short answer, and at least one citation.
@@ -128,9 +130,13 @@ def grounded_answer(
 def apply_strict(answer: GroundedAnswer) -> GroundedAnswer:
     if answer.abstain:
         return answer
-    if any(not citation.verified for citation in answer.citations):
+    if any(not citation.quote_in_region for citation in answer.citations):
         return answer.model_copy(
             update={"abstain": True, "abstain_reason": "verify_failed", "answer": None}
+        )
+    if not any(citation.answer_in_quote for citation in answer.citations):
+        return answer.model_copy(
+            update={"abstain": True, "abstain_reason": "unsupported", "answer": None}
         )
     return answer
 
@@ -156,7 +162,8 @@ def _apply_policy(
             if region is None:
                 unknown = True
                 continue
-            ok = verify_quote(item.quote, region.text)
+            qin = verify_quote(item.quote, region.text)
+            ain = answer_in_quote(generated.answer, item.quote)
             citations.append(
                 Citation(
                     doc_id=region.doc_id,
@@ -164,17 +171,21 @@ def _apply_policy(
                     region_id=region.region_id,
                     bbox=region.bbox,
                     quote=item.quote,
-                    verified=ok,
+                    verified=qin and ain,
+                    quote_in_region=qin,
+                    answer_in_quote=ain,
                 )
             )
             verify_rows.append(
                 VerifyResult(
-                    ok=ok,
+                    ok=qin and ain,
                     quote=item.quote,
-                    matched_text=item.quote if ok else None,
+                    matched_text=item.quote if qin else None,
                     doc_id=region.doc_id,
                     page=region.page,
                     region_id=region.region_id,
+                    quote_in_region=qin,
+                    answer_in_quote=ain,
                 )
             )
 
@@ -183,8 +194,10 @@ def _apply_policy(
     answer_text = generated.answer if generated is not None else None
     if unknown:
         abstain, reason, answer_text = True, "generator_invalid", None
-    elif citations and strict and any(not citation.verified for citation in citations):
+    elif citations and strict and any(not citation.quote_in_region for citation in citations):
         abstain, reason, answer_text = True, "verify_failed", None
+    elif citations and strict and not any(citation.answer_in_quote for citation in citations):
+        abstain, reason, answer_text = True, "unsupported", None
     elif generated.abstain:
         abstain, reason, answer_text = True, "unanswerable", None
     elif not citations or generated.answer is None:

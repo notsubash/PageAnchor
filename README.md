@@ -2,7 +2,7 @@
 
 **Every answer cites a verifiable region on a page, or it refuses.**
 
-Text-only RAG is fluent and uncheckable on layout-heavy PDFs. PageAnchor retrieves pages, picks layout regions, asks the generator for verbatim quotes, and keeps the answer only if each quote is a normalized substring of the cited region. Web, CLI, MCP, and eval call the same `grounded_answer` function.
+Text-only RAG is fluent and uncheckable on layout-heavy PDFs. PageAnchor retrieves pages, picks layout regions, asks the generator for verbatim quotes, and keeps the answer only if each quote is a normalized substring of the cited region and the answer is a normalized substring of a cited quote. Web, CLI, MCP, and eval call the same `grounded_answer` function.
 
 ![Citation overlay on BLS CPI Table A](docs/images/citation-overlay.png)
 
@@ -119,7 +119,7 @@ Committed run (`eval/results/2026-09-10/`, Windows CPU, ColQwen2 CPU, `deepseek-
 | D hybrid+verify | 0.875 | 0.923 | 1.000 | 0.353 | 1.000 | 2675 |
 | D-lite text+verify | 0.708 | 0.917 | 1.000 | 0.316 | 1.000 | 1819 |
 
-Visual retrieve lifts Recall@5 from 17/24 to 21/24. Hybrid matches visual on this freeze (RRF did not add another hit). D's verify pass equals C, so the strict path is not dropping good citations. D-lite catches the one unverified text quote (A 0.917 → 1.000). Abstain recall is 1.0 on the six unanswerable items. Precision is ~0.35 because the generator also refused about half of the answerable rows.
+Visual retrieve lifts Recall@5 from 17/24 to 21/24. Hybrid matches visual on this freeze (RRF did not add another hit). D's verify pass equals C, so the strict path is not dropping good citations. D-lite catches the one unverified text quote (A 0.917 → 1.000). Abstain recall is 1.0 on the six unanswerable items. Precision is ~0.35 because the generator also refused about half of the answerable rows. Strict mode also requires the answer string to appear in a cited quote; a heading box is not enough.
 
 Same gold on CUDA (`eval/results/2026-09-10-gpu/`, `torch 2.11.0+cu128`, RTX 4070 Ti SUPER). Recall@5 matches the CPU table. p50 drops because query encoding is on GPU; MaxSim stays numpy on CPU. Citation page hit can still move with the generator.
 
