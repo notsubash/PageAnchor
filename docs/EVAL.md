@@ -46,10 +46,10 @@ Systems:
 | A | `text` | Keep the generator answer even if a quote fails verify. |
 | B | `visual` | Same, visual retrieve. |
 | C | `hybrid` | Same, RRF. |
-| D | `hybrid+verify` | Any unverified citation → abstain, `answer=null`. |
-| D-lite | `text+verify` | Strict verify on text retrieve. |
+| D | `hybrid+verify` | Quote not in region → `verify_failed`. Quotes in region but answer in none → `unsupported`. Keep if any quote contains the answer. |
+| D-lite | `text+verify` | Same nested checks on text retrieve. |
 
-Headline system is D. If D's verify pass rate is below C on the same run, the strict path is miswired; do not treat that table as a result.
+Headline system is D. D abstains C's fluent misses: `verify_failed` or `unsupported`, citations kept. Verify pass can sit below 1.0 when a kept answer cites an extra quote that does not contain the span; that is not a wiring bug.
 
 nDCG, table exact match, and cost are not scored.
 
@@ -65,7 +65,7 @@ nDCG, table exact match, and cost are not scored.
 | D hybrid+verify | 0.875 | 0.923 | 1.000 | 0.353 | 1.000 | 2675 |
 | D-lite text+verify | 0.708 | 0.917 | 1.000 | 0.316 | 1.000 | 1819 |
 
-Recall@5 is 17/24 (text) and 21/24 (visual and hybrid). D verify pass equals C, so the strict path is not miswired. D-lite raises text verify pass from 0.917 to 1.000 by abstaining on the one unverified citation (q017). Abstain recall is 1.0 on the six unanswerable items. Precision is ~0.35 because 11 or 12 answerable questions were also refused (`unanswerable`, `verify_failed`, or `unsupported`).
+Recall@5 is 17/24 (text) and 21/24 (visual and hybrid). D verify pass equals C, so the strict path is not miswired. D-lite raises text verify pass from 0.917 to 1.000 by abstaining on the one unverified citation (q017). Abstain recall is 1.0 on the six unanswerable items. Precision is ~0.35 because 11 or 12 answerable questions were also refused (`unanswerable` or `verify_failed`). Current strict policy can also abstain `unsupported` when the quote is on the page but does not contain the answer.
 
 Recall@5 on answerable gold by type:
 
