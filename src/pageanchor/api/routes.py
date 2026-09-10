@@ -94,11 +94,8 @@ def page_regions(
 
 @router.post("/v1/search")
 def search(body: SearchBody) -> dict:
-    try:
-        modes = {"text": search_text, "visual": search_visual, "hybrid": search_hybrid}
-        hits = modes[body.mode](body.query, body.k)
-    except FileNotFoundError as exc:
-        raise HTTPException(503, str(exc)) from exc
+    modes = {"text": search_text, "visual": search_visual, "hybrid": search_hybrid}
+    hits = _retrieve(modes[body.mode], body.query, body.k)
     return _traced(hits=[hit.model_dump() for hit in hits])
 
 
@@ -133,10 +130,7 @@ def verify(body: VerifyBody, settings: Settings = Depends(get_settings)) -> dict
 
 @router.post("/v1/answer")
 def answer(body: AnswerBody) -> dict:
-    try:
-        result = grounded_answer(body.question, body.mode, strict=body.strict)
-    except FileNotFoundError as exc:
-        raise HTTPException(503, str(exc)) from exc
+    result = _retrieve(grounded_answer, body.question, body.mode, strict=body.strict)
     payload = result.model_dump()
     payload["trace_id"] = result.trace.trace_id
     return payload
@@ -144,6 +138,13 @@ def answer(body: AnswerBody) -> dict:
 
 def _traced(**fields) -> dict:
     return {"trace_id": new_trace_id(), **fields}
+
+
+def _retrieve(fn, *args, **kwargs):
+    try:
+        return fn(*args, **kwargs)
+    except (FileNotFoundError, ImportError) as exc:
+        raise HTTPException(503, str(exc)) from exc
 
 
 def _http_call(fn, *args, **kwargs):
