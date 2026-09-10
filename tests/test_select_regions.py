@@ -1,7 +1,7 @@
 import json
 
-from pageanchor.ground.regions import select_regions
-from pageanchor.models import Region
+from pageanchor.ground.regions import select_evidence, select_regions
+from pageanchor.models import PageHit, Region
 
 
 def test_select_regions_ranks_by_lexical_overlap(tmp_path, monkeypatch):
@@ -71,3 +71,92 @@ def test_select_regions_ignores_question_stopwords(tmp_path, monkeypatch):
         "what embedding model was used in colpali", "d", 1, max_regions=2
     )
     assert ranked[0].region_id == "d:p1:r1"
+
+
+def test_select_evidence_caps_regions_per_page(tmp_path, monkeypatch):
+    monkeypatch.setenv("PAGEANCHOR_CORPUS_ROOT", str(tmp_path))
+    rows = []
+    for page in (1, 2):
+        for index in range(3):
+            rows.append(
+                Region(
+                    doc_id="d",
+                    page=page,
+                    region_id=f"d:p{page}:r{index}",
+                    type="text",
+                    bbox=(0.0, 0.1 * index, 1.0, 0.1 * index + 0.1),
+                    text="PaliGemma embedding model " * (3 - index),
+                ).model_dump()
+            )
+    out = tmp_path / "regions"
+    out.mkdir()
+    (out / "d.json").write_text(json.dumps(rows), encoding="utf-8")
+
+    def fake_embed(texts: list[str]) -> list[list[float]]:
+        return [[float(len(text)), 0.0] for text in texts]
+
+    picked = select_evidence(
+        "PaliGemma",
+        [
+            PageHit(doc_id="d", page=1, score=1.0, source="text"),
+            PageHit(doc_id="d", page=2, score=0.9, source="text"),
+        ],
+        max_regions=5,
+        per_page=2,
+        embed_query=fake_embed,
+        embed_passages=fake_embed,
+        corpus_root=tmp_path,
+    )
+    counts: dict[int, int] = {}
+    for region in picked:
+        counts[region.page] = counts.get(region.page, 0) + 1
+    assert len(picked) == 4
+    assert counts[1] == 2
+    assert counts[2] == 2
+
+
+def test_select_evidence_dense_rerank_beats_jaccard_trap(tmp_path, monkeypatch):
+    monkeypatch.setenv("PAGEANCHOR_CORPUS_ROOT", str(tmp_path))
+    rows = [
+        Region(
+            doc_id="d",
+            page=1,
+            region_id="d:p1:r0",
+            type="text",
+            bbox=(0.0, 0.0, 1.0, 0.2),
+            text="Model Embedding size (KB) BGE-M3 ColPali",
+        ).model_dump(),
+        Region(
+            doc_id="d",
+            page=1,
+            region_id="d:p1:r1",
+            type="text",
+            bbox=(0.0, 0.2, 1.0, 0.4),
+            text="The PaliGemma-3B model projects SigLIP-So400m/14 patch embeddings into Gemma-2B",
+        ).model_dump(),
+    ]
+    out = tmp_path / "regions"
+    out.mkdir()
+    (out / "d.json").write_text(json.dumps(rows), encoding="utf-8")
+
+    def embed_query(texts: list[str]) -> list[list[float]]:
+        return [[0.0, 1.0] for _ in texts]
+
+    def embed_passages(texts: list[str]) -> list[list[float]]:
+        out_vec = []
+        for text in texts:
+            if "PaliGemma-3B" in text:
+                out_vec.append([0.0, 1.0])
+            else:
+                out_vec.append([1.0, 0.0])
+        return out_vec
+
+    picked = select_evidence(
+        "what embedding model was used in colpali",
+        [PageHit(doc_id="d", page=1, score=1.0, source="hybrid")],
+        max_regions=1,
+        embed_query=embed_query,
+        embed_passages=embed_passages,
+        corpus_root=tmp_path,
+    )
+    assert picked[0].region_id == "d:p1:r1"

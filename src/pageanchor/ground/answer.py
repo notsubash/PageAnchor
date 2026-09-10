@@ -7,7 +7,7 @@ from collections.abc import Callable
 from pydantic import BaseModel, Field
 
 from pageanchor.config import generator_client, load_settings
-from pageanchor.ground.regions import select_regions
+from pageanchor.ground.regions import select_evidence
 from pageanchor.ground.verify import answer_in_quote, verify_quote
 from pageanchor.ids import new_trace_id
 from pageanchor.models import (
@@ -95,16 +95,7 @@ def grounded_answer(
 
     select_started = time.perf_counter()
     if regions is None:
-        pool: list[ScoredRegion] = []
-        seen: set[tuple[str, int]] = set()
-        for hit in hits:
-            key = (hit.doc_id, hit.page)
-            if key in seen:
-                continue
-            seen.add(key)
-            pool.extend(select_regions(question, hit.doc_id, hit.page, max_regions=50))
-        pool.sort(key=lambda region: (-region.score, region.region_id))
-        regions = pool[:5]
+        regions = select_evidence(question, hits)
     timings["select_ms"] = (time.perf_counter() - select_started) * 1000
 
     generate_started = time.perf_counter()
