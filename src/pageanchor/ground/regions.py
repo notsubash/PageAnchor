@@ -10,7 +10,8 @@ from pageanchor.models import PageHit, ScoredRegion
 
 _TOKEN_RE = re.compile(r"[A-Za-z0-9_]+")
 # Query-side only. Region tokens stay intact so a rare word on the page can still match.
-# Closed list, no stemming; dense_rerank is the semantic upgrade.
+# Closed English + question list, no stemming. use/used/using stay as content words;
+# dense_rerank is what beats appendix lines that share "used".
 _STOPWORDS = frozenset(
     {
         "a",

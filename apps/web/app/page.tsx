@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 
 import {
   Citation,
@@ -27,10 +27,13 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GroundedAnswer | null>(null);
   const [selected, setSelected] = useState<Citation | null>(null);
+  const askGen = useRef(0);
 
   const shown = pair ? pair[view] : result;
+  const canned = shown?.trace_id === Q011_EXHIBIT.trace_id;
 
   async function ask(asked: string) {
+    const gen = ++askGen.current;
     setLoading(true);
     setError(null);
     setPair(null);
@@ -40,21 +43,32 @@ export default function Home() {
           postAnswer({ question: asked, mode: "hybrid", strict }),
           postAnswer({ question: asked, mode: "text", strict }),
         ]);
+        if (gen !== askGen.current) {
+          return;
+        }
         setPair({ text: textAns, hybrid: hybridAns });
         setView("hybrid");
         setResult(hybridAns);
         setSelected(hybridAns.citations[0] ?? null);
       } else {
         const primary = await postAnswer({ question: asked, mode, strict });
+        if (gen !== askGen.current) {
+          return;
+        }
         setResult(primary);
         setSelected(primary.citations[0] ?? null);
       }
     } catch (err) {
+      if (gen !== askGen.current) {
+        return;
+      }
       setResult(null);
       setSelected(null);
       setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setLoading(false);
+      if (gen === askGen.current) {
+        setLoading(false);
+      }
     }
   }
 
@@ -73,6 +87,8 @@ export default function Home() {
   }
 
   function onExhibit() {
+    askGen.current += 1;
+    setLoading(false);
     setQuestion(Q011_EXHIBIT.question);
     setError(null);
     setPair(null);
@@ -116,7 +132,8 @@ export default function Home() {
                   key={item}
                   type="button"
                   className="mode"
-                  aria-pressed={mode === item}
+                  aria-pressed={compare ? item !== "visual" : mode === item}
+                  disabled={compare}
                   onClick={() => setMode(item)}
                 >
                   {item}
@@ -135,7 +152,13 @@ export default function Home() {
               <input
                 type="checkbox"
                 checked={compare}
-                onChange={(event) => setCompare(event.target.checked)}
+                onChange={(event) => {
+                  const on = event.target.checked;
+                  setCompare(on);
+                  if (on && mode === "visual") {
+                    setMode("hybrid");
+                  }
+                }}
               />
               Compare TEXT
             </label>
@@ -151,6 +174,7 @@ export default function Home() {
                   key={seed.id}
                   type="button"
                   className="mode"
+                  disabled={loading}
                   onClick={() => onSeed(seed.question)}
                 >
                   {seed.label}
@@ -183,6 +207,9 @@ export default function Home() {
                 HYBRID
               </button>
             </div>
+          ) : null}
+          {canned ? (
+            <p className="banner">EXHIBIT (canned, not generated)</p>
           ) : null}
           {error ? <p className="banner fault">{error}</p> : null}
           {shown?.abstain ? <p className="banner abstain">{abstainBanner}</p> : null}
