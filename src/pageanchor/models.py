@@ -9,6 +9,7 @@ AbstainReason = Literal[
     "low_retrieval_score",
     "no_hits",
     "verify_failed",
+    "unsupported",
     "unanswerable",
     "generator_invalid",
 ]
@@ -41,6 +42,8 @@ class Citation(BaseModel):
     bbox: BBox
     quote: str
     verified: bool = False
+    quote_in_region: bool = False
+    answer_in_quote: bool = False
 
 
 class VerifyResult(BaseModel):
@@ -50,6 +53,8 @@ class VerifyResult(BaseModel):
     doc_id: str
     page: int = Field(ge=1)
     region_id: str
+    quote_in_region: bool = False
+    answer_in_quote: bool = False
 
 
 class Trace(BaseModel):

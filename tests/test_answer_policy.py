@@ -165,3 +165,88 @@ def test_verify_failed_wins_over_model_abstain():
     assert result.abstain is True
     assert result.abstain_reason == "verify_failed"
     assert result.citations[0].verified is False
+
+
+def test_answer_not_in_quote_abstains_unsupported_when_strict():
+    region = _region("Single-Task Training on headings")
+
+    def fake_generate(question, regions):
+        return GeneratorOutput(
+            answer="8.5k",
+            citations=[
+                GeneratorCitation(
+                    region_id=region.region_id, quote="Single-Task Training"
+                )
+            ],
+        )
+
+    result = grounded_answer(
+        "How many CoLA training examples?",
+        "text",
+        strict=True,
+        hits=[PageHit(doc_id="hello", page=1, score=1.0, source="text")],
+        regions=[region],
+        generate=fake_generate,
+    )
+    assert result.abstain is True
+    assert result.abstain_reason == "unsupported"
+    assert result.answer is None
+    assert result.citations[0].quote_in_region is True
+    assert result.citations[0].answer_in_quote is False
+    assert result.citations[0].verified is False
+    assert result.citations[0].bbox == region.bbox
+
+
+def test_extractive_answer_passes_nested_verify():
+    region = _region("CoLA 8.5k train examples")
+
+    def fake_generate(question, regions):
+        return GeneratorOutput(
+            answer="8.5k",
+            citations=[
+                GeneratorCitation(region_id=region.region_id, quote="CoLA 8.5k")
+            ],
+        )
+
+    result = grounded_answer(
+        "How many CoLA training examples?",
+        "text",
+        strict=True,
+        hits=[PageHit(doc_id="hello", page=1, score=1.0, source="text")],
+        regions=[region],
+        generate=fake_generate,
+    )
+    assert result.abstain is False
+    assert result.answer == "8.5k"
+    assert result.citations[0].verified is True
+    assert result.citations[0].quote_in_region is True
+    assert result.citations[0].answer_in_quote is True
+
+
+def test_apply_strict_maps_support_fail_to_unsupported():
+    from pageanchor.ground.answer import apply_strict
+    from pageanchor.ids import new_trace_id
+    from pageanchor.models import Citation, GroundedAnswer, Trace
+
+    answer = GroundedAnswer(
+        question="n?",
+        answer="8.5k",
+        abstain=False,
+        citations=[
+            Citation(
+                doc_id="hello",
+                page=1,
+                region_id="hello:p1:r0",
+                bbox=(0.1, 0.1, 0.5, 0.2),
+                quote="Single-Task Training",
+                verified=False,
+                quote_in_region=True,
+                answer_in_quote=False,
+            )
+        ],
+        trace=Trace(trace_id=new_trace_id(), retrieval_mode="hybrid"),
+    )
+    strict = apply_strict(answer)
+    assert strict.abstain is True
+    assert strict.abstain_reason == "unsupported"
+    assert strict.answer is None
