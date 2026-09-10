@@ -19,3 +19,19 @@ Known weaknesses:
 - Text retrieve often ranks a caption or a later restatement instead of the table cell. That is scored as a citation-page miss, not a verify miss.
 
 After `frozen_at`, fix page numbers only. New questions need a freeze bump and a new `frozen_at`.
+
+## Hard set
+
+`corpus/eval/hard_questions.jsonl` is additive. The frozen 30 stay put. This file may move until a `hard_frozen_at` line is added here when eval numbers are committed.
+
+Sixteen rows:
+
+- `lexical_gap`: user wording is not the page wording (embedding model vs PaliGemma-3B).
+- `table_cell`: a cell value, not a caption.
+- `figure_only`: sparse slide or teaser text.
+- `layout`: algorithm / fragmented slide text.
+- `adversarial_unanswerable`: in-corpus words, wrong document or wrong year.
+
+Answerable rows have `gold_answer` plus a `gold_quote` copied from `corpus/regions/{doc_id}.json` on a `gold_pages` page. Unanswerable rows keep `gold_doc_id` null and empty quote/pages.
+
+Score it separately. Do not mix those metrics into `eval/results/2026-09-10/`.

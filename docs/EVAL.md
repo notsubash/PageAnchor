@@ -34,9 +34,13 @@ Hashes in the manifest must match the PDFs on disk. Ingest refuses a mismatch. D
 | --- | --- | --- |
 | Recall@5 | answerable | Gold `(doc_id, page)` appears in `trace.hits[:5]`. |
 | Citation page hit | answerable rows that produced citations | Some citation has gold `doc_id` and a gold page. |
+| Region hit | answerable rows with `gold_quote` | Quote is a normalized substring of some `trace.regions` text. |
+| Answer match | answerable kept answers with `gold_answer` | `gold_answer` is a normalized substring of `answer`. Missing `gold_answer` is skipped. |
+| Quote support rate | citations on kept answers | Fraction with `answer_in_quote`. |
 | Verify pass rate | citations on **kept** (non-abstain) answers | Fraction with `verified=true` (quote-in-region and answer-in-quote). |
 | Abstain precision | all 30 | Among abstains, share that are gold-unanswerable. |
 | Abstain recall | 6 unanswerable | Share of unanswerable rows that abstained. |
+| Abstain by reason | all rows | Counts of abstain reasons split by gold answerable vs not. |
 | Latency p50 | all rows | Median `grounded_answer` wall time, ms. |
 
 Systems:
@@ -115,3 +119,13 @@ If you tune later, record the value and the six question ids in this file. Do no
 ## CI
 
 `uv run pytest tests/` is GPU-free. It uses a one-page fixture PDF and mocked retrieve/generate. It does not download the corpus or ColQwen2. GPU tests are `pytest.mark.gpu` and are skipped in CI.
+
+## Hard set
+
+`corpus/eval/hard_questions.jsonl` is 16 rows on top of the frozen 30. Types: `lexical_gap`, `table_cell`, `figure_only`, `layout`, `adversarial_unanswerable`. Report `region_hit`, `answer_match`, `quote_support_rate`, and `abstain_by_reason` from `score_run`. Do not mix those numbers into `eval/results/2026-09-10/`.
+
+```bash
+uv run pageanchor eval --gold corpus/eval/hard_questions.jsonl \
+  --modes text,visual,hybrid,hybrid+verify \
+  --out eval/results/$(date +%F)-hard
+```
