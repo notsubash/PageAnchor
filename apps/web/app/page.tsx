@@ -36,8 +36,10 @@ export default function Home() {
     setPair(null);
     try {
       if (compare) {
-        const hybridAns = await postAnswer({ question: asked, mode: "hybrid", strict });
-        const textAns = await postAnswer({ question: asked, mode: "text", strict });
+        const [hybridAns, textAns] = await Promise.all([
+          postAnswer({ question: asked, mode: "hybrid", strict }),
+          postAnswer({ question: asked, mode: "text", strict }),
+        ]);
         setPair({ text: textAns, hybrid: hybridAns });
         setView("hybrid");
         setResult(hybridAns);
