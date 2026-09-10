@@ -37,7 +37,11 @@ def render_report(results: dict, gold: list[dict] | None = None) -> str:
                 p50=metrics["latency_p50_ms"],
             )
         )
-    note = _type_note(results, gold) if gold else ""
+    note = ""
+    if gold:
+        note += _type_note(results, gold)
+        note += _wrong_cite_note(results, gold)
+        note += _verify_policy_note(results)
     return "\n".join(lines) + "\n" + note
 
 
@@ -59,6 +63,74 @@ def _type_note(results: dict, gold: list[dict]) -> str:
         lines.append(f"| {qtype} | {n} | {text_r:.3f} | {visual_r:.3f} |")
     lines.append("")
     return "\n".join(lines) + "\n"
+
+
+def _wrong_cite_note(results: dict, gold: list[dict]) -> str:
+    mode = next((name for name in ("text", "hybrid", "visual") if name in results), None)
+    if mode is None:
+        return ""
+    rows: list[tuple[str, str, str, str, str]] = []
+    for row, answer in zip(gold, results[mode]["answers"], strict=True):
+        if not row["answerable"]:
+            continue
+        payload = GroundedAnswer.model_validate(answer) if isinstance(answer, dict) else answer
+        if not payload.citations:
+            continue
+        gold_pages = set(row["gold_pages"])
+        gold_doc = row["gold_doc_id"]
+        if any(
+            citation.doc_id == gold_doc and citation.page in gold_pages
+            for citation in payload.citations
+        ):
+            continue
+        cited = ", ".join(
+            dict.fromkeys(f"{c.doc_id} p.{c.page}" for c in payload.citations)
+        )
+        gold_s = f"{gold_doc} p.{','.join(str(page) for page in row['gold_pages'])}"
+        rows.append(
+            (row["id"], str(row.get("type") or ""), cited, gold_s, (payload.answer or "")[:80])
+        )
+    if not rows:
+        return ""
+    lines = [
+        "",
+        "Answerable questions whose citations missed the gold page "
+        f"(mode `{mode}`):",
+        "",
+        "| id | type | cited | gold |",
+        "| --- | --- | --- | --- |",
+    ]
+    for qid, qtype, cited, gold_s, _answer in rows:
+        lines.append(f"| {qid} | {qtype} | {cited} | {gold_s} |")
+    qid, qtype, cited, gold_s, answer = next(
+        (row for row in rows if row[1] == "table"), rows[0]
+    )
+    lines.extend(
+        [
+            "",
+            f"Example: `{qid}` ({qtype}) answered {answer!r} citing {cited}; gold is {gold_s}.",
+            "Verify only checks that the quote is a normalized substring of the cited "
+            "region. It does not check that the quote entails the answer.",
+            "",
+        ]
+    )
+    return "\n".join(lines) + "\n"
+
+
+def _verify_policy_note(results: dict) -> str:
+    loose = results.get("hybrid") or results.get("text")
+    strict = results.get("hybrid+verify") or results.get("text+verify")
+    if not loose or not strict:
+        return ""
+    loose_v = loose["metrics"]["verify_pass_rate"]
+    strict_v = strict["metrics"]["verify_pass_rate"]
+    if strict_v + 1e-9 < loose_v:
+        return (
+            "Strict verify pass rate is below the matching retrieve-only run. "
+            "That usually means the abstain path is dropping verified citations "
+            "or keeping unverified ones in the answer field.\n"
+        )
+    return ""
 
 
 def _recall_type(gold: list[dict], answers: list, qtype: str) -> tuple[float, int]:
