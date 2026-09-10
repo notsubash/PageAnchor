@@ -87,3 +87,13 @@ def test_colqwen2_encode_query_shape():
 
     vec = encode_query("benchmark")
     assert len(vec) > 0 and len(vec[0]) > 0
+
+
+def test_colqwen2_hint_names_torch_and_install():
+    from pageanchor.retrieve.visual import _colqwen2_hint
+
+    text = _colqwen2_hint(RuntimeError("operator torchvision::nms does not exist"))
+    assert "torch=" in text
+    assert "torchvision=" in text
+    assert "nms" in text
+    assert "cu128" in text

@@ -78,9 +78,9 @@ On abstain, `answer` is `null`. Failed citations remain on `citations` with `ver
 | 400 | Invalid `doc_id` (`ValueError`) |
 | 422 | Request schema, including `page < 1` |
 | 404 | Unknown document, missing page PNG, missing regions, unknown `region_id` |
-| 503 | LanceDB path missing, text table missing, or visual table missing (`FileNotFoundError` from retrieve / answer) |
+| 503 | LanceDB missing, visual table missing, or visual encoder failed to import (`FileNotFoundError` / `ImportError` from retrieve / answer) |
 
-Missing visual index: hybrid and visual search return 503 with a message to run `pageanchor ingest --visual`. The UI can still use `mode=text`.
+Missing visual index: hybrid and visual search return 503 with a message to run `pageanchor ingest --visual`. The UI can still use `mode=text`. ColQwen2 import failures (torch/torchvision mismatch) are also 503; overlay CUDA 12.8 wheels after the visual extra, then `uv run --no-sync`.
 
 ## curl
 

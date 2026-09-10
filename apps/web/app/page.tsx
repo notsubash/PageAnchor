@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 
 import {
   Citation,
@@ -9,6 +9,7 @@ import {
   pagePngUrl,
   postAnswer,
 } from "@/lib/api";
+import { Q011_EXHIBIT, SEEDS } from "@/lib/exhibits";
 
 const MODES: RetrievalMode[] = ["text", "visual", "hybrid"];
 
@@ -16,35 +17,101 @@ export default function Home() {
   const [question, setQuestion] = useState("");
   const [mode, setMode] = useState<RetrievalMode>("hybrid");
   const [strict, setStrict] = useState(true);
+  const [compare, setCompare] = useState(false);
+  const [view, setView] = useState<"text" | "hybrid">("hybrid");
+  const [pair, setPair] = useState<{
+    text: GroundedAnswer;
+    hybrid: GroundedAnswer;
+  } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GroundedAnswer | null>(null);
   const [selected, setSelected] = useState<Citation | null>(null);
+  const askGen = useRef(0);
 
-  async function onAsk(event: FormEvent) {
+  const shown = pair ? pair[view] : result;
+  const canned = shown?.trace_id === Q011_EXHIBIT.trace_id;
+
+  async function ask(asked: string) {
+    const gen = ++askGen.current;
+    setLoading(true);
+    setError(null);
+    setPair(null);
+    try {
+      if (compare) {
+        const [hybridAns, textAns] = await Promise.all([
+          postAnswer({ question: asked, mode: "hybrid", strict }),
+          postAnswer({ question: asked, mode: "text", strict }),
+        ]);
+        if (gen !== askGen.current) {
+          return;
+        }
+        setPair({ text: textAns, hybrid: hybridAns });
+        setView("hybrid");
+        setResult(hybridAns);
+        setSelected(hybridAns.citations[0] ?? null);
+      } else {
+        const primary = await postAnswer({ question: asked, mode, strict });
+        if (gen !== askGen.current) {
+          return;
+        }
+        setResult(primary);
+        setSelected(primary.citations[0] ?? null);
+      }
+    } catch (err) {
+      if (gen !== askGen.current) {
+        return;
+      }
+      setResult(null);
+      setSelected(null);
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      if (gen === askGen.current) {
+        setLoading(false);
+      }
+    }
+  }
+
+  function onAsk(event: FormEvent) {
     event.preventDefault();
     const asked = question.trim();
     if (!asked) {
       return;
     }
-    setLoading(true);
+    void ask(asked);
+  }
+
+  function onSeed(seedQuestion: string) {
+    setQuestion(seedQuestion);
+    void ask(seedQuestion);
+  }
+
+  function onExhibit() {
+    askGen.current += 1;
+    setLoading(false);
+    setQuestion(Q011_EXHIBIT.question);
     setError(null);
-    try {
-      const data = await postAnswer({ question: asked, mode, strict });
-      setResult(data);
-      setSelected(data.citations[0] ?? null);
-    } catch (err) {
-      setResult(null);
-      setSelected(null);
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
+    setPair(null);
+    setResult(Q011_EXHIBIT);
+    setSelected(Q011_EXHIBIT.citations[0] ?? null);
+  }
+
+  function onCompareView(next: "text" | "hybrid") {
+    setView(next);
+    if (pair) {
+      setSelected(pair[next].citations[0] ?? null);
     }
   }
 
   const frame = selected?.page;
   const frameLabel =
     frame != null ? `FRAME ${String(frame).padStart(3, "0")}` : "FRAME ---";
+  const abstainBanner =
+    shown?.abstain_reason === "unsupported"
+      ? "The quote is on the page but does not contain the answer."
+      : shown?.abstain
+        ? `Abstained: ${shown.abstain_reason ?? "abstain"}. The answer well stays empty.`
+        : null;
 
   return (
     <div className="reader">
@@ -65,7 +132,8 @@ export default function Home() {
                   key={item}
                   type="button"
                   className="mode"
-                  aria-pressed={mode === item}
+                  aria-pressed={compare ? item !== "visual" : mode === item}
+                  disabled={compare}
                   onClick={() => setMode(item)}
                 >
                   {item}
@@ -80,31 +148,80 @@ export default function Home() {
               />
               Strict
             </label>
+            <label className="latch">
+              <input
+                type="checkbox"
+                checked={compare}
+                onChange={(event) => {
+                  const on = event.target.checked;
+                  setCompare(on);
+                  if (on && mode === "visual") {
+                    setMode("hybrid");
+                  }
+                }}
+              />
+              Compare TEXT
+            </label>
             <textarea
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
               placeholder="Ask the frozen corpus"
               required
             />
+            <div className="modes" role="group" aria-label="Seed questions">
+              {SEEDS.map((seed) => (
+                <button
+                  key={seed.id}
+                  type="button"
+                  className="mode"
+                  disabled={loading}
+                  onClick={() => onSeed(seed.question)}
+                >
+                  {seed.label}
+                </button>
+              ))}
+            </div>
+            <button type="button" className="mode" onClick={onExhibit}>
+              Exhibit
+            </button>
             <button className="load" type="submit" disabled={loading} aria-busy={loading}>
               {loading ? "Advancing" : "Load frame"}
             </button>
           </form>
-          {error ? <p className="banner fault">{error}</p> : null}
-          {result?.abstain ? (
-            <p className="banner abstain">
-              Abstained: {result.abstain_reason ?? "abstain"}. The answer well stays empty.
-            </p>
-          ) : null}
-          {result && !result.abstain && result.answer ? (
-            <div className="well-plate">
-              <p className="plate-label">Answer</p>
-              <p className="answer">{result.answer}</p>
+          {pair ? (
+            <div className="modes" role="group" aria-label="Compare retrieve">
+              <button
+                type="button"
+                className="mode"
+                aria-pressed={view === "text"}
+                onClick={() => onCompareView("text")}
+              >
+                TEXT
+              </button>
+              <button
+                type="button"
+                className="mode"
+                aria-pressed={view === "hybrid"}
+                onClick={() => onCompareView("hybrid")}
+              >
+                HYBRID
+              </button>
             </div>
           ) : null}
-          {result && result.citations.length > 0 ? (
+          {canned ? (
+            <p className="banner">EXHIBIT (canned, not generated)</p>
+          ) : null}
+          {error ? <p className="banner fault">{error}</p> : null}
+          {shown?.abstain ? <p className="banner abstain">{abstainBanner}</p> : null}
+          {shown && !shown.abstain && shown.answer ? (
+            <div className="well-plate">
+              <p className="plate-label">Answer</p>
+              <p className="answer">{shown.answer}</p>
+            </div>
+          ) : null}
+          {shown && shown.citations.length > 0 ? (
             <ul className="citations">
-              {result.citations.map((citation, index) => (
+              {shown.citations.map((citation, index) => (
                 <li key={`${citation.region_id ?? citation.quote}-${index}`}>
                   <button
                     type="button"
@@ -125,7 +242,12 @@ export default function Home() {
                           alt="verified"
                         />
                       ) : (
-                        <span className="bad">unverified</span>
+                        <span className="bad">
+                          unverified
+                          {citation.quote_in_region && !citation.answer_in_quote
+                            ? " unsupported"
+                            : ""}
+                        </span>
                       )}
                     </div>
                     <p className="quote">{citation.quote}</p>
@@ -156,11 +278,11 @@ export default function Home() {
                     }}
                   />
                 </div>
-              ) : result?.abstain ? (
+              ) : shown?.abstain ? (
                 <div className="leader">
                   <img src="/stamps/no-frame-stamp.png" alt="" />
                   <p>
-                    Abstained ({result.abstain_reason}). Citations stay on the left bezel if
+                    Abstained ({shown.abstain_reason}). Citations stay on the left bezel if
                     present.
                   </p>
                 </div>
@@ -176,9 +298,9 @@ export default function Home() {
 
         <section className="index" aria-label="Debug">
           <h2 className="panel-title">Trace</h2>
-          {result ? (
+          {shown ? (
             <>
-              <p className="debug-id">trace {result.trace_id}</p>
+              <p className="debug-id">trace {shown.trace_id}</p>
               <table className="telemetry">
                 <caption>Hits</caption>
                 <thead>
@@ -189,7 +311,7 @@ export default function Home() {
                   </tr>
                 </thead>
                 <tbody>
-                  {result.trace.hits.map((hit) => (
+                  {shown.trace.hits.map((hit) => (
                     <tr key={`${hit.doc_id}-${hit.page}-${hit.source}`}>
                       <td>{hit.doc_id}</td>
                       <td>{hit.page}</td>
@@ -207,12 +329,12 @@ export default function Home() {
                   </tr>
                 </thead>
                 <tbody>
-                  {result.trace.verify.length === 0 ? (
+                  {shown.trace.verify.length === 0 ? (
                     <tr>
                       <td colSpan={2}>none</td>
                     </tr>
                   ) : (
-                    result.trace.verify.map((row) => (
+                    shown.trace.verify.map((row) => (
                       <tr key={`${row.region_id}-${row.quote}`}>
                         <td>{row.ok ? "yes" : "no"}</td>
                         <td>{row.region_id}</td>
@@ -224,7 +346,7 @@ export default function Home() {
               <table className="telemetry">
                 <caption>Timings ms</caption>
                 <tbody>
-                  {Object.entries(result.trace.timings_ms).map(([name, value]) => (
+                  {Object.entries(shown.trace.timings_ms).map(([name, value]) => (
                     <tr key={name}>
                       <td>{name}</td>
                       <td>{value.toFixed(0)}</td>
@@ -234,7 +356,7 @@ export default function Home() {
               </table>
               <details>
                 <summary>Trace JSON</summary>
-                <pre>{JSON.stringify(result.trace, null, 2)}</pre>
+                <pre>{JSON.stringify(shown.trace, null, 2)}</pre>
               </details>
             </>
           ) : (

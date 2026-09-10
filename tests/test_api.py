@@ -261,3 +261,30 @@ def test_search_and_answer_missing_lancedb_is_503(corpus: Path):
         assert "LanceDB not found" in answer.json()["detail"]
 
     _run(run())
+
+
+def test_search_and_answer_visual_import_error_is_503(
+    corpus: Path, monkeypatch: pytest.MonkeyPatch
+):
+    from pageanchor.api import routes
+
+    def boom(*args, **kwargs):
+        raise ImportError("visual retrieve could not load ColQwen2")
+
+    monkeypatch.setattr(routes, "search_hybrid", boom)
+    monkeypatch.setattr(routes, "grounded_answer", boom)
+
+    async def run():
+        async with await _client() as client:
+            search = await client.post(
+                "/v1/search", json={"query": "token", "k": 1, "mode": "hybrid"}
+            )
+            answer = await client.post(
+                "/v1/answer", json={"question": "token", "mode": "hybrid", "strict": True}
+            )
+        assert search.status_code == 503
+        assert "ColQwen2" in search.json()["detail"]
+        assert answer.status_code == 503
+        assert "ColQwen2" in answer.json()["detail"]
+
+    _run(run())

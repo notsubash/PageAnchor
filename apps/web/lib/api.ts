@@ -27,6 +27,8 @@ export type Citation = {
   bbox: BBox;
   quote: string;
   verified: boolean;
+  quote_in_region?: boolean;
+  answer_in_quote?: boolean;
 };
 
 export type VerifyResult = {

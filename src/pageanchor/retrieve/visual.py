@@ -109,10 +109,8 @@ def _load():
         try:
             import torch
             from colpali_engine.models import ColQwen2, ColQwen2Processor
-        except ImportError as exc:
-            raise ImportError(
-                "visual retrieve needs the visual extra: uv sync --extra visual"
-            ) from exc
+        except (ImportError, RuntimeError) as exc:
+            raise ImportError(_colqwen2_hint(exc)) from exc
 
         from pageanchor.config import load_settings, torch_device
 
@@ -128,3 +126,27 @@ def _load():
         ).to(device).eval()
         _processor = ColQwen2Processor.from_pretrained(name)
     return _model, _processor
+
+
+def _colqwen2_hint(exc: BaseException) -> str:
+    torch_v = "missing"
+    torchvision_v = "missing"
+    try:
+        import torch
+
+        torch_v = torch.__version__
+    except Exception:
+        pass
+    try:
+        import importlib.metadata as metadata
+
+        torchvision_v = metadata.version("torchvision")
+    except Exception:
+        pass
+    return (
+        "visual retrieve could not load ColQwen2 "
+        f"(torch={torch_v}, torchvision={torchvision_v}): {exc}. "
+        "Torch and torchvision must match. After the visual extra, overlay CUDA 12.8 "
+        "wheels with `uv pip install torch torchvision --index-url "
+        "https://download.pytorch.org/whl/cu128` and run the API with `uv run --no-sync`."
+    )
