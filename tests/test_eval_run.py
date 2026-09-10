@@ -61,3 +61,52 @@ def test_run_eval_hybrid_verify_reuses_hybrid_answers(tmp_path, monkeypatch):
     assert results["hybrid+verify"]["answers"][0]["abstain_reason"] == "verify_failed"
     strict = apply_strict(_answer("hybrid", abstain=False, verified=False))
     assert strict.abstain is True
+
+
+def test_report_lists_wrong_citation_page():
+    from pageanchor.eval.report import render_report
+
+    gold = [
+        {
+            "id": "q011",
+            "question": "CoLA n?",
+            "answerable": True,
+            "gold_doc_id": "glue",
+            "gold_pages": [2],
+            "gold_quote": "CoLA 8.5k",
+            "type": "table",
+        }
+    ]
+    answer = _answer("text", abstain=False, verified=True)
+    answer = answer.model_copy(
+        update={
+            "answer": "8.5k",
+            "citations": [
+                answer.citations[0].model_copy(
+                    update={
+                        "doc_id": "glue",
+                        "page": 8,
+                        "quote": "Single-Task Training",
+                    }
+                )
+            ],
+        }
+    )
+    md = render_report(
+        {
+            "text": {
+                "metrics": {
+                    "recall_at_5": 0.0,
+                    "citation_page_hit": 0.0,
+                    "verify_pass_rate": 1.0,
+                    "abstain_precision": 0.0,
+                    "abstain_recall": 0.0,
+                    "latency_p50_ms": 1.0,
+                },
+                "answers": [answer],
+            }
+        },
+        gold,
+    )
+    assert "| q011 | table | glue p.8 | glue p.2 |" in md
+    assert "8.5k" in md

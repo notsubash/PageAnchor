@@ -1,6 +1,6 @@
 # MCP
 
-Same retrieve, region, verify, and answer functions as the CLI and HTTP API, over stdio. The server imports `pageanchor` core. It does not call HTTP.
+Same retrieve, region, verify, and answer functions as the CLI and HTTP API, over stdio. The server imports `pageanchor` core. It does not call HTTP (see [ARCHITECTURE.md](ARCHITECTURE.md)).
 
 Do not state a fact until `verify_quote` is true. Do not guess page content; call `select_evidence`.
 
