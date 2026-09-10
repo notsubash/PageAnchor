@@ -42,6 +42,25 @@ def render_report(
                 p50=metrics["latency_p50_ms"],
             )
         )
+    lines.extend(
+        [
+            "",
+            "| system | region hit | answer match | quote support |",
+            "| --- | ---: | ---: | ---: |",
+        ]
+    )
+    for mode, payload in results.items():
+        metrics = payload["metrics"]
+        name = _LABELS.get(mode, mode)
+        lines.append(
+            "| {name} | {region:.3f} | {match:.3f} | {support:.3f} |".format(
+                name=name,
+                region=metrics.get("region_hit", 0.0),
+                match=metrics.get("answer_match", 0.0),
+                support=metrics.get("quote_support_rate", 0.0),
+            )
+        )
+    lines.extend(_abstain_reason_table(results))
     note = ""
     if gold:
         note += _type_note(results, gold)
@@ -141,8 +160,8 @@ def _wrong_cite_note(results: dict, gold: list[dict]) -> str:
         [
             "",
             f"Example: `{qid}` ({qtype}) answered {answer!r} citing {cited}; gold is {gold_s}.",
-            "Verify only checks that the quote is a normalized substring of the cited "
-            "region. It does not check that the quote entails the answer.",
+            "Nested verify checks quote-in-region and answer-in-quote. "
+            "A matching string on the wrong page is still a citation-page miss.",
             "",
         ]
     )
@@ -163,6 +182,37 @@ def _verify_policy_note(results: dict) -> str:
             "or keeping unverified ones in the answer field.\n"
         )
     return ""
+
+
+def _abstain_reason_table(results: dict) -> list[str]:
+    reasons = (
+        "unanswerable",
+        "verify_failed",
+        "unsupported",
+        "generator_invalid",
+        "no_hits",
+    )
+    rows: list[str] = []
+    for mode, payload in results.items():
+        split = payload["metrics"].get("abstain_by_reason") or {}
+        if not split:
+            continue
+        name = _LABELS.get(mode, mode)
+        if not rows:
+            rows = [
+                "",
+                "Abstain counts by gold slice and reason:",
+                "",
+                "| system | slice | " + " | ".join(reasons) + " |",
+                "| --- | --- | " + " | ".join("---:" for _ in reasons) + " |",
+            ]
+        for slice_name in ("answerable", "unanswerable"):
+            bucket = split.get(slice_name) or {}
+            cells = " | ".join(f"{bucket.get(reason, 0.0):.0f}" for reason in reasons)
+            rows.append(f"| {name} | {slice_name} | {cells} |")
+    if rows:
+        rows.append("")
+    return rows
 
 
 def _recall_type(gold: list[dict], answers: list, qtype: str) -> tuple[float, int]:
