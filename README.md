@@ -40,6 +40,14 @@ Visual retrieve needs torch + ColQwen2. `uv sync` replaces extras, so list every
 uv sync --extra dev --extra api --extra mcp --extra visual
 ```
 
+NVIDIA GPU: PyPI torch is CPU-only on Windows. Overlay CUDA 12.8 wheels after the visual extra (latest on that index is 2.11.0, not 2.13):
+
+```bash
+uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+```
+
+Use `uv run --no-sync` after that. A normal `uv sync` / `uv run` puts CPU torch back from the lock. ColQwen2 and the text embedder use CUDA when `torch.cuda.is_available()`. Force CPU with `PAGEANCHOR_DEVICE=cpu`. If you set `PAGEANCHOR_DEVICE=cuda` and torch is CPU-only, it fails fast with that install line.
+
 ### Corpus
 
 ```bash
@@ -101,32 +109,43 @@ Do not state a fact until `verify_quote` is true. Do not guess page content; cal
 
 Frozen gold: 30 questions (6 each of plain text, table, figure, layout, unanswerable), `frozen_at=2026-09-08`.
 
-Committed run (`eval/results/2026-09-08/`, Windows CPU, text retrieve, `deepseek-v4-flash`):
+Committed run (`eval/results/2026-09-10/`, Windows CPU, ColQwen2 CPU, `deepseek-v4-flash`):
 
 | system | recall@5 | citation page hit | verify pass | abstain P | abstain R | p50 ms |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| A text | 0.708 | 0.556 | 1.000 | 0.500 | 1.000 | 1825 |
-| D-lite text+verify | 0.708 | 0.556 | 1.000 | 0.500 | 1.000 | 1825 |
+| A text | 0.708 | 0.917 | 0.917 | 0.333 | 1.000 | 1819 |
+| B visual | 0.875 | 0.923 | 1.000 | 0.353 | 1.000 | 2104 |
+| C hybrid | 0.875 | 0.923 | 1.000 | 0.353 | 1.000 | 2675 |
+| D hybrid+verify | 0.875 | 0.923 | 1.000 | 0.353 | 1.000 | 2675 |
+| D-lite text+verify | 0.708 | 0.917 | 1.000 | 0.316 | 1.000 | 1819 |
 
-A and D-lite match: the generator did not keep unverified quotes. Abstain recall is 1.0 on the six unanswerable items. Precision is 0.5 because six answerable questions were also refused.
+Visual retrieve lifts Recall@5 from 17/24 to 21/24. Hybrid matches visual on this freeze (RRF did not add another hit). D's verify pass equals C, so the strict path is not dropping good citations. D-lite catches the one unverified text quote (A 0.917 → 1.000). Abstain recall is 1.0 on the six unanswerable items. Precision is ~0.35 because the generator also refused about half of the answerable rows.
 
-Text retrieve cited the wrong page on table and slide questions even when the answer string looked right. **q011** answered `8.5k` for GLUE CoLA size while citing page 8 headings; gold is the table on page 2. Verify passed. That is the thesis: fluency is not evidence. Reproduce and metric definitions: [docs/EVAL.md](docs/EVAL.md).
+Same gold on CUDA (`eval/results/2026-09-10-gpu/`, `torch 2.11.0+cu128`, RTX 4070 Ti SUPER). Recall@5 matches the CPU table. p50 drops because query encoding is on GPU; MaxSim stays numpy on CPU. Citation page hit can still move with the generator.
 
-Reproduce the table:
+| system | recall@5 | citation page hit | verify pass | abstain P | abstain R | p50 ms |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| A text | 0.708 | 0.909 | 1.000 | 0.316 | 1.000 | 1346 |
+| B visual | 0.875 | 0.917 | 1.000 | 0.333 | 1.000 | 1503 |
+| C hybrid | 0.875 | 0.846 | 1.000 | 0.353 | 1.000 | 1486 |
+| D hybrid+verify | 0.875 | 0.846 | 1.000 | 0.353 | 1.000 | 1486 |
+| D-lite text+verify | 0.708 | 0.909 | 1.000 | 0.316 | 1.000 | 1346 |
+
+Visual wins on the LayoutLMv3 teaser (**q017**): text cited page 2 with an unverified quote; visual and hybrid cited the page 1 figure, verified. Visual does not fix ColPali Table 2 (**q012**, gold page 7): it cites a later restatement. The Roman first-slide title (**q016**) is retrieved by no mode. Full write-up: [docs/EVAL.md](docs/EVAL.md).
 
 ```bash
+uv sync --extra dev --extra visual
 uv run pageanchor eval --gold corpus/eval/gold_questions.jsonl \
-  --modes text,text+verify --out eval/results/$(date +%F)
+  --modes text,visual,hybrid,hybrid+verify,text+verify --out eval/results/$(date +%F)
 ```
 
-Visual / hybrid (B, C, D) need `--extra visual` and the visual index:
+GPU eval (same harness, separate folder). Overlay CUDA torch first:
 
 ```bash
-uv run pageanchor eval --gold corpus/eval/gold_questions.jsonl \
-  --modes text,visual,hybrid,hybrid+verify --out eval/results/$(date +%F)
+uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+uv run --no-sync pageanchor eval --gold corpus/eval/gold_questions.jsonl \
+  --modes text,visual,hybrid,hybrid+verify,text+verify --out eval/results/$(date +%F)-gpu
 ```
-
-Commit a new dated folder; do not silently edit gold.
 
 ## Stack
 
@@ -146,6 +165,6 @@ Outline for a portfolio post (not in this repo):
 
 1. Why fluent RAG is uncheckable on tables and slides
 2. One `GroundedAnswer` behind CLI, HTTP, and MCP
-3. Ablation table and the q011 miss ([docs/EVAL.md](docs/EVAL.md))
+3. Ablation table, the q017 visual win, and the q012 table miss ([docs/EVAL.md](docs/EVAL.md))
 4. Overlay screenshot above
 5. What we refused to build

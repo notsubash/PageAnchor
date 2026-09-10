@@ -1,6 +1,7 @@
 docs/PLAN.md
 
 .venv/
+.wheels/
 __pycache__/
 *.py[cod]
 *.egg-info/

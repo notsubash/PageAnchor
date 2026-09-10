@@ -7,12 +7,22 @@ Reproduce:
 ```bash
 uv run pageanchor ingest --all
 uv run pageanchor ingest --visual --all   # needed for visual / hybrid
+uv sync --extra dev --extra visual   # ColQwen2; list every extra you already use
 uv run pageanchor eval --gold corpus/eval/gold_questions.jsonl \
-  --modes text,visual,hybrid,hybrid+verify \
+  --modes text,visual,hybrid,hybrid+verify,text+verify \
   --out eval/results/YYYY-MM-DD
 ```
 
-`--modes text,text+verify` is the text-only pair (A vs D-lite) when ColQwen2 is not installed.
+GPU (NVIDIA). PyPI torch is CPU; overlay CUDA 12.8 wheels (2.11.0+cu128 as of this writing). Same harness; write a separate dated folder so CPU and GPU rows are not mixed:
+
+```bash
+uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+uv run --no-sync pageanchor eval --gold corpus/eval/gold_questions.jsonl \
+  --modes text,visual,hybrid,hybrid+verify,text+verify \
+  --out eval/results/YYYY-MM-DD-gpu
+```
+
+Each run writes `machine.json` (`torch`, `cuda`, `device`). After a CUDA overlay, use `uv run --no-sync` so the lock does not replace GPU torch with the CPU wheel. `--modes text,text+verify` is the text-only pair (A vs D-lite) when ColQwen2 is not installed.
 
 The harness calls `grounded_answer(..., strict=False)` once per retrieve mode, then `apply_strict` for `*+verify`. Visual and `hybrid+verify` therefore do not double-pay the generator.
 
@@ -45,27 +55,54 @@ nDCG, table exact match, and cost are not scored.
 
 ## Committed run
 
-`eval/results/2026-09-08/` is Windows CPU, text retrieve only, generator `deepseek-v4-flash`. Visual extra was not loaded. A and D-lite match because the generator did not keep unverified quotes.
+`eval/results/2026-09-10/` is the full ablation: Windows CPU, ColQwen2 on CPU (`vidore/colqwen2-v1.0`), generator `deepseek-v4-flash`. Visual index: 160 pages. Text index: 3193 chunks.
 
 | system | recall@5 | citation page hit | verify pass | abstain P | abstain R | p50 ms |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| A text | 0.708 | 0.556 | 1.000 | 0.500 | 1.000 | 1825 |
-| D-lite text+verify | 0.708 | 0.556 | 1.000 | 0.500 | 1.000 | 1825 |
+| A text | 0.708 | 0.917 | 0.917 | 0.333 | 1.000 | 1819 |
+| B visual | 0.875 | 0.923 | 1.000 | 0.353 | 1.000 | 2104 |
+| C hybrid | 0.875 | 0.923 | 1.000 | 0.353 | 1.000 | 2675 |
+| D hybrid+verify | 0.875 | 0.923 | 1.000 | 0.353 | 1.000 | 2675 |
+| D-lite text+verify | 0.708 | 0.917 | 1.000 | 0.316 | 1.000 | 1819 |
 
-Recall@5 is 17/24. Citation page hit is among answerable rows that produced citations. Abstain recall is 1.0 on the six unanswerable items. Precision is 0.5 because six answerable questions were also refused (`unanswerable` or `generator_invalid`).
+Recall@5 is 17/24 (text) and 21/24 (visual and hybrid). D verify pass equals C, so the strict path is not miswired. D-lite raises text verify pass from 0.917 to 1.000 by abstaining on the one unverified citation (q017). Abstain recall is 1.0 on the six unanswerable items. Precision is ~0.35 because 11 or 12 answerable questions were also refused (`unanswerable` or `verify_failed`).
 
-To add B/C/D, re-run the four-mode command above on a machine with `--extra visual` and commit a new dated folder. Do not overwrite `2026-09-08` if the generator or index changed.
+Recall@5 on answerable gold by type:
 
-## Failure case
+| type | n | text | visual | hybrid |
+| --- | ---: | ---: | ---: | ---: |
+| table | 6 | 0.667 | 0.833 | 0.833 |
+| figure | 6 | 0.667 | 0.833 | 0.833 |
+| layout | 6 | 0.833 | 0.833 | 0.833 |
+| plain_text | 6 | 0.667 | 1.000 | 1.000 |
 
-**q011** (table): "How many CoLA training examples does the GLUE table list?" Gold is `arxiv-1804-glue` page 2, quote `CoLA 8.5k`. Text retrieve@5 never ranked page 2. The generator answered `8.5k` and cited page 8 headings (`Single-Task Training`, `Multi-Task Training`). Both quotes verified: they are substrings of those regions. The number is not on the cited page.
+Visual beats text on table, figure, and plain text. Layout is tied. Hybrid matches visual on every type; RRF did not recover an extra gold page on this freeze.
 
-That is the product boundary. Verify does not ask whether the quote supports the answer. Citation page hit is the metric that catches it.
+`eval/results/2026-09-10-gpu/` is the same gold and indexes on CUDA. `machine.json`: `torch 2.11.0+cu128`, `NVIDIA GeForce RTX 4070 Ti SUPER`. Query encoding used CUDA (ColQwen2 bf16, Qwen3-Embedding on cuda). Page MaxSim is still numpy on CPU.
 
-Related misses in the same run (full table in `eval/results/2026-09-08/report.md`):
+| system | recall@5 | citation page hit | verify pass | abstain P | abstain R | p50 ms |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| A text | 0.708 | 0.909 | 1.000 | 0.316 | 1.000 | 1346 |
+| B visual | 0.875 | 0.917 | 1.000 | 0.333 | 1.000 | 1503 |
+| C hybrid | 0.875 | 0.846 | 1.000 | 0.353 | 1.000 | 1486 |
+| D hybrid+verify | 0.875 | 0.846 | 1.000 | 0.353 | 1.000 | 1486 |
+| D-lite text+verify | 0.708 | 0.909 | 1.000 | 0.316 | 1.000 | 1346 |
 
-- **q012** (table): Table 2 lives on ColPali page 7. Retrieve ranked page 4 (Table 1) and cited page 21, which restates `nDCG@5`. The answer is right; the box would be wrong.
-- **q016** (figure / slides): first-slide title is page 1, `Expanding Our View`. Text retrieve never ranked page 1 and cited the FAQ on page 29. Sparse slide text is why visual retrieve exists; this run does not yet prove it.
+Recall@5 and the type table match the CPU run. p50 is lower: text 1819 → 1346, visual 2104 → 1503, hybrid 2675 → 1486. Hybrid is close to visual-only because both encoders are on GPU; the remaining wall time is DeepSeek. Citation page hit and abstain precision moved (hybrid cite 0.923 → 0.846 from extra generator misses on q012 and q020). That is not a retrieve regression.
+
+`eval/results/2026-09-08/` is an earlier text-only run. Do not mix rows across dates: generator behavior moved (citation page hit 0.556 → 0.917 on text). Use 2026-09-10 for CPU comparisons and 2026-09-10-gpu for CUDA latency.
+
+## Failure and win cases
+
+**Visual win, q017** (figure): "What image-centric layout dataset is named on the LayoutLMv3 teaser figure?" Gold is page 1, `PubLayNet`. Text retrieve never ranked page 1 and cited page 2 with an unverified quote. Visual and hybrid retrieved page 1 and cited `(b) Image-centric layout anal- ysis on PubLayNet`, verified. That is the case text RAG is supposed to lose.
+
+**Still wrong page, q012** (table): Table 2 lives on ColPali page 7. No mode ranked page 7. Visual answered `nDCG@5` citing page 21 (the metric restated). Hybrid cited page 4 (Table 1). The string is right; the box is not.
+
+**Nobody finds the slide, q016** (figure): first-slide title `Expanding Our View` is page 1 of the Roman deck. Text, visual, and hybrid all ranked later slides (26, 4) and the generator abstained. Page-level ColQwen2 did not save this one.
+
+**Retrieve helped, generate did not, q011** (table): visual and hybrid both put GLUE page 2 (the CoLA table) in the top 5. Text did not. All three modes still abstained `unanswerable`. Recall@5 credits visual; the answer field stays empty.
+
+Wrong-page citation tables for each mode: `eval/results/2026-09-10/report.md` (CPU) and `eval/results/2026-09-10-gpu/report.md` (CUDA).
 
 ## Score cutoff
 

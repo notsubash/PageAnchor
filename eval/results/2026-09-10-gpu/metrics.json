@@ -1,0 +1,47 @@
+{
+  "text": {
+    "n": 30.0,
+    "recall_at_5": 0.7083333333333334,
+    "citation_page_hit": 0.9090909090909091,
+    "verify_pass_rate": 1.0,
+    "abstain_precision": 0.3157894736842105,
+    "abstain_recall": 1.0,
+    "latency_p50_ms": 1345.5081000001883
+  },
+  "visual": {
+    "n": 30.0,
+    "recall_at_5": 0.875,
+    "citation_page_hit": 0.9166666666666666,
+    "verify_pass_rate": 1.0,
+    "abstain_precision": 0.3333333333333333,
+    "abstain_recall": 1.0,
+    "latency_p50_ms": 1503.3899500003827
+  },
+  "hybrid": {
+    "n": 30.0,
+    "recall_at_5": 0.875,
+    "citation_page_hit": 0.8461538461538461,
+    "verify_pass_rate": 1.0,
+    "abstain_precision": 0.35294117647058826,
+    "abstain_recall": 1.0,
+    "latency_p50_ms": 1485.8901999996306
+  },
+  "hybrid+verify": {
+    "n": 30.0,
+    "recall_at_5": 0.875,
+    "citation_page_hit": 0.8461538461538461,
+    "verify_pass_rate": 1.0,
+    "abstain_precision": 0.35294117647058826,
+    "abstain_recall": 1.0,
+    "latency_p50_ms": 1485.8901999996306
+  },
+  "text+verify": {
+    "n": 30.0,
+    "recall_at_5": 0.7083333333333334,
+    "citation_page_hit": 0.9090909090909091,
+    "verify_pass_rate": 1.0,
+    "abstain_precision": 0.3157894736842105,
+    "abstain_recall": 1.0,
+    "latency_p50_ms": 1345.5081000001883
+  }
+}

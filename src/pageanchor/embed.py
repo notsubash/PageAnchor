@@ -10,9 +10,11 @@ def _load():
     if _model is None:
         from sentence_transformers import SentenceTransformer
 
-        from pageanchor.config import load_settings
+        from pageanchor.config import load_settings, torch_device
 
-        _model = SentenceTransformer(load_settings().text_embedding_model)
+        device = torch_device()
+        _model = SentenceTransformer(load_settings().text_embedding_model, device=device)
+        print(f"text encoder on {device}", flush=True)
         # Regions are chunked to 1500 chars; 32k-token default makes CPU ingest unusable.
         _model.max_seq_length = 1024
         tokenizer = getattr(_model, "tokenizer", None)

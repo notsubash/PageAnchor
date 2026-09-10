@@ -61,6 +61,7 @@ def test_run_eval_hybrid_verify_reuses_hybrid_answers(tmp_path, monkeypatch):
     assert results["hybrid+verify"]["answers"][0]["abstain_reason"] == "verify_failed"
     strict = apply_strict(_answer("hybrid", abstain=False, verified=False))
     assert strict.abstain is True
+    assert (out / "machine.json").is_file()
 
 
 def test_report_lists_wrong_citation_page():
@@ -110,3 +111,21 @@ def test_report_lists_wrong_citation_page():
     )
     assert "| q011 | table | glue p.8 | glue p.2 |" in md
     assert "8.5k" in md
+    md_gpu = render_report(
+        {
+            "text": {
+                "metrics": {
+                    "recall_at_5": 0.0,
+                    "citation_page_hit": 0.0,
+                    "verify_pass_rate": 1.0,
+                    "abstain_precision": 0.0,
+                    "abstain_recall": 0.0,
+                    "latency_p50_ms": 1.0,
+                },
+                "answers": [answer],
+            }
+        },
+        gold,
+        machine={"torch": "2.11.0+cu128", "cuda": True, "device": "NVIDIA GeForce RTX 4070"},
+    )
+    assert "Torch 2.11.0+cu128 on NVIDIA GeForce RTX 4070" in md_gpu

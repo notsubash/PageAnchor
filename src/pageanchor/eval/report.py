@@ -11,7 +11,12 @@ _LABELS = {
 }
 
 
-def render_report(results: dict, gold: list[dict] | None = None) -> str:
+def render_report(
+    results: dict,
+    gold: list[dict] | None = None,
+    *,
+    machine: dict | None = None,
+) -> str:
     lines = [
         "# Retrieval ablation",
         "",
@@ -42,35 +47,50 @@ def render_report(results: dict, gold: list[dict] | None = None) -> str:
         note += _type_note(results, gold)
         note += _wrong_cite_note(results, gold)
         note += _verify_policy_note(results)
+    if machine:
+        note += _machine_note(machine)
     return "\n".join(lines) + "\n" + note
+
+
+def _machine_note(machine: dict) -> str:
+    torch_v = machine.get("torch") or "unknown"
+    device = machine.get("device") or "unknown"
+    return f"\nTorch {torch_v} on {device}.\n"
 
 
 def _type_note(results: dict, gold: list[dict]) -> str:
     if "text" not in results or "visual" not in results:
         return ""
-    lines = [
-        "",
-        "Recall@5 on answerable gold by type (text vs visual):",
-        "",
-        "| type | n | text | visual |",
-        "| --- | ---: | ---: | ---: |",
-    ]
+    has_hybrid = "hybrid" in results
+    if has_hybrid:
+        header = "| type | n | text | visual | hybrid |"
+        align = "| --- | ---: | ---: | ---: | ---: |"
+    else:
+        header = "| type | n | text | visual |"
+        align = "| --- | ---: | ---: | ---: |"
+    title = (
+        "Recall@5 on answerable gold by type:"
+        if has_hybrid
+        else "Recall@5 on answerable gold by type (text vs visual):"
+    )
+    lines = ["", title, "", header, align]
     for qtype in ("table", "figure", "layout", "plain_text"):
         text_r, n = _recall_type(gold, results["text"]["answers"], qtype)
         visual_r, _ = _recall_type(gold, results["visual"]["answers"], qtype)
         if n == 0:
             continue
-        lines.append(f"| {qtype} | {n} | {text_r:.3f} | {visual_r:.3f} |")
+        if has_hybrid:
+            hybrid_r, _ = _recall_type(gold, results["hybrid"]["answers"], qtype)
+            lines.append(f"| {qtype} | {n} | {text_r:.3f} | {visual_r:.3f} | {hybrid_r:.3f} |")
+        else:
+            lines.append(f"| {qtype} | {n} | {text_r:.3f} | {visual_r:.3f} |")
     lines.append("")
     return "\n".join(lines) + "\n"
 
 
-def _wrong_cite_note(results: dict, gold: list[dict]) -> str:
-    mode = next((name for name in ("text", "hybrid", "visual") if name in results), None)
-    if mode is None:
-        return ""
+def _wrong_cite_rows(gold: list[dict], answers: list) -> list[tuple[str, str, str, str, str]]:
     rows: list[tuple[str, str, str, str, str]] = []
-    for row, answer in zip(gold, results[mode]["answers"], strict=True):
+    for row, answer in zip(gold, answers, strict=True):
         if not row["answerable"]:
             continue
         payload = GroundedAnswer.model_validate(answer) if isinstance(answer, dict) else answer
@@ -90,22 +110,34 @@ def _wrong_cite_note(results: dict, gold: list[dict]) -> str:
         rows.append(
             (row["id"], str(row.get("type") or ""), cited, gold_s, (payload.answer or "")[:80])
         )
-    if not rows:
+    return rows
+
+
+def _wrong_cite_note(results: dict, gold: list[dict]) -> str:
+    blocks: list[str] = []
+    examples: list[tuple[str, str, str, str, str]] = []
+    for mode in ("text", "visual", "hybrid"):
+        if mode not in results:
+            continue
+        rows = _wrong_cite_rows(gold, results[mode]["answers"])
+        if not rows:
+            continue
+        lines = [
+            f"Answerable questions whose citations missed the gold page (mode `{mode}`):",
+            "",
+            "| id | type | cited | gold |",
+            "| --- | --- | --- | --- |",
+        ]
+        for qid, qtype, cited, gold_s, _answer in rows:
+            lines.append(f"| {qid} | {qtype} | {cited} | {gold_s} |")
+        blocks.append("\n".join(lines))
+        examples.extend(rows)
+    if not blocks:
         return ""
-    lines = [
-        "",
-        "Answerable questions whose citations missed the gold page "
-        f"(mode `{mode}`):",
-        "",
-        "| id | type | cited | gold |",
-        "| --- | --- | --- | --- |",
-    ]
-    for qid, qtype, cited, gold_s, _answer in rows:
-        lines.append(f"| {qid} | {qtype} | {cited} | {gold_s} |")
-    qid, qtype, cited, gold_s, answer = next(
-        (row for row in rows if row[1] == "table"), rows[0]
-    )
-    lines.extend(
+    out = ["", "\n\n".join(blocks)]
+    example = next((row for row in examples if row[1] == "table"), examples[0])
+    qid, qtype, cited, gold_s, answer = example
+    out.extend(
         [
             "",
             f"Example: `{qid}` ({qtype}) answered {answer!r} citing {cited}; gold is {gold_s}.",
@@ -114,7 +146,7 @@ def _wrong_cite_note(results: dict, gold: list[dict]) -> str:
             "",
         ]
     )
-    return "\n".join(lines) + "\n"
+    return "\n".join(out) + "\n"
 
 
 def _verify_policy_note(results: dict) -> str:
