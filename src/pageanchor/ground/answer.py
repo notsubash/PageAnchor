@@ -134,7 +134,7 @@ def apply_strict(answer: GroundedAnswer) -> GroundedAnswer:
         return answer.model_copy(
             update={"abstain": True, "abstain_reason": "verify_failed", "answer": None}
         )
-    if any(not citation.answer_in_quote for citation in answer.citations):
+    if not any(citation.answer_in_quote for citation in answer.citations):
         return answer.model_copy(
             update={"abstain": True, "abstain_reason": "unsupported", "answer": None}
         )
@@ -196,7 +196,7 @@ def _apply_policy(
         abstain, reason, answer_text = True, "generator_invalid", None
     elif citations and strict and any(not citation.quote_in_region for citation in citations):
         abstain, reason, answer_text = True, "verify_failed", None
-    elif citations and strict and any(not citation.answer_in_quote for citation in citations):
+    elif citations and strict and not any(citation.answer_in_quote for citation in citations):
         abstain, reason, answer_text = True, "unsupported", None
     elif generated.abstain:
         abstain, reason, answer_text = True, "unanswerable", None
