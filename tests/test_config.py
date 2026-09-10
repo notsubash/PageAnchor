@@ -31,6 +31,40 @@ def test_defaults_are_deepseek_and_retrieval_models():
     assert DEFAULT_VISUAL_RETRIEVE_MODEL == "vidore/colqwen2-v1.0"
 
 
+def test_torch_device_cpu_override(monkeypatch):
+    monkeypatch.setenv("PAGEANCHOR_DEVICE", "cpu")
+    from pageanchor.config import torch_device
+
+    assert torch_device() == "cpu"
+
+
+def test_torch_device_rejects_unknown(monkeypatch):
+    monkeypatch.setenv("PAGEANCHOR_DEVICE", "tpu")
+    from pageanchor.config import torch_device
+
+    try:
+        torch_device()
+    except ValueError as exc:
+        assert "cpu, cuda, or empty" in str(exc)
+    else:
+        raise AssertionError("expected ValueError")
+
+
+def test_torch_device_cuda_override_needs_gpu(monkeypatch):
+    monkeypatch.setenv("PAGEANCHOR_DEVICE", "cuda")
+    import torch
+
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
+    from pageanchor.config import torch_device
+
+    try:
+        torch_device()
+    except RuntimeError as exc:
+        assert "uv pip install torch" in str(exc)
+    else:
+        raise AssertionError("expected RuntimeError")
+
+
 def test_generator_client_points_at_deepseek(monkeypatch):
     monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test")
     monkeypatch.setenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")

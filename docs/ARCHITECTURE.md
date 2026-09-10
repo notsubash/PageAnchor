@@ -36,7 +36,7 @@ Layout defaults to PyMuPDF text blocks so gold quotes stay stable on Windows. `P
 
 `grounded_answer(question, mode, strict=True)`:
 
-1. **Retrieve pages.** `text` embeds the query with Qwen3-Embedding-0.6B and collapses chunks to `(doc_id, page)`. `visual` encodes the query with ColQwen2 and scores every page with numpy MaxSim (brute force; fine until the corpus is far past a thousand pages). `hybrid` is Reciprocal Rank Fusion over page keys, `k_rrf=60`. Default production mode is `hybrid`.
+1. **Retrieve pages.** `text` embeds the query with Qwen3-Embedding-0.6B and collapses chunks to `(doc_id, page)`. `visual` encodes the query with ColQwen2 and scores every page with numpy MaxSim (brute force; fine until the corpus is far past a thousand pages). Encoders use CUDA when `torch.cuda.is_available()` (override with `PAGEANCHOR_DEVICE=cpu` or `cuda`). `hybrid` is Reciprocal Rank Fusion over page keys, `k_rrf=60`. Default production mode is `hybrid`.
 2. **Select regions.** On each hit page, rank stored regions by token Jaccard with the query. Keep the global top 5.
 3. **Generate.** DeepSeek V4 (`deepseek-v4-flash` via the OpenAI SDK) must return structured `GeneratorOutput`: an answer or abstain, plus citations whose `region_id` is in the prompt and whose `quote` is a verbatim substring of that region.
 4. **Verify.** Each quote is checked with `verify_quote` against the cited region's text.

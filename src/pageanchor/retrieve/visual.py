@@ -114,11 +114,12 @@ def _load():
                 "visual retrieve needs the visual extra: uv sync --extra visual"
             ) from exc
 
-        from pageanchor.config import load_settings
+        from pageanchor.config import load_settings, torch_device
 
         name = load_settings().visual_retrieve_model
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        device = torch.device(torch_device())
         dtype = torch.bfloat16 if device.type == "cuda" else torch.float32
+        print(f"visual encoder on {device} ({dtype})", flush=True)
         _model = ColQwen2.from_pretrained(
             name,
             torch_dtype=dtype,

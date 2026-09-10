@@ -4,6 +4,7 @@ import json
 import time
 from pathlib import Path
 
+from pageanchor.config import torch_env
 from pageanchor.eval.metrics import score_run
 from pageanchor.eval.report import render_report
 from pageanchor.ground.answer import apply_strict, grounded_answer
@@ -48,6 +49,7 @@ def run_eval(gold_path: str, modes: list[str], out_dir: str) -> dict:
 
     dest = Path(out_dir)
     dest.mkdir(parents=True, exist_ok=True)
+    machine = torch_env()
     (dest / "metrics.json").write_text(
         json.dumps({mode: payload["metrics"] for mode, payload in results.items()}, indent=2),
         encoding="utf-8",
@@ -56,7 +58,10 @@ def run_eval(gold_path: str, modes: list[str], out_dir: str) -> dict:
         json.dumps({mode: payload["answers"] for mode, payload in results.items()}, indent=2),
         encoding="utf-8",
     )
-    (dest / "report.md").write_text(render_report(results, gold), encoding="utf-8")
+    (dest / "machine.json").write_text(json.dumps(machine, indent=2), encoding="utf-8")
+    (dest / "report.md").write_text(
+        render_report(results, gold, machine=machine), encoding="utf-8"
+    )
     return results
 
 

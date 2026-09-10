@@ -30,6 +30,39 @@ def under_root(root: Path, *parts: str | Path) -> Path:
     return dest
 
 
+def torch_device() -> str:
+    """cuda if available, else cpu. PAGEANCHOR_DEVICE=cpu|cuda overrides."""
+    import torch
+
+    forced = os.getenv("PAGEANCHOR_DEVICE", "").strip().lower()
+    if forced == "cpu":
+        return "cpu"
+    if forced == "cuda":
+        if not torch.cuda.is_available():
+            raise RuntimeError(
+                "PAGEANCHOR_DEVICE=cuda but torch cannot see a GPU. "
+                "Install CUDA torch: uv pip install torch torchvision "
+                "--index-url https://download.pytorch.org/whl/cu128"
+            )
+        return "cuda"
+    if forced:
+        raise ValueError("PAGEANCHOR_DEVICE must be cpu, cuda, or empty")
+    return "cuda" if torch.cuda.is_available() else "cpu"
+
+
+def torch_env() -> dict[str, str | bool | None]:
+    try:
+        import torch
+    except ImportError:
+        return {"torch": None, "cuda": False, "device": "unknown"}
+    cuda = torch.cuda.is_available()
+    return {
+        "torch": torch.__version__,
+        "cuda": cuda,
+        "device": torch.cuda.get_device_name(0) if cuda else "cpu",
+    }
+
+
 def _as_bool(value: str | None, default: bool = True) -> bool:
     if value is None or value.strip() == "":
         return default
