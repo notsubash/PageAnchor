@@ -38,7 +38,7 @@ The mechanism a neighboring chatbot cannot copy: quotes are verified as normaliz
 
 ## Brand Commitments
 
-Name: PageAnchor. Thesis line in use: "Every answer cites a verifiable region, or it refuses." Code license Apache-2.0; per-document licenses live in `corpus/LICENSE.md`. No visual identity was pinned; the visitor asked the visual world to be chosen for them.
+Name: PageAnchor. Thesis line in use: "Every answer cites a verifiable region, or it refuses." Code license Apache-2.0; per-document licenses live in `corpus/LICENSE.md`. Standing visual preference (2026-09-11): a dark platform workbench at Linear + Vercel dashboard craft. That replaces the microfilm-reader world.
 
 ## Evidence on Hand
 

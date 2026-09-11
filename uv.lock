@@ -1906,6 +1906,7 @@ source = { editable = "." }
 dependencies = [
     { name = "lancedb" },
     { name = "openai" },
+    { name = "pillow" },
     { name = "pydantic" },
     { name = "pymupdf" },
     { name = "python-dotenv" },
@@ -1942,6 +1943,7 @@ requires-dist = [
     { name = "lancedb" },
     { name = "mcp", marker = "extra == 'mcp'", specifier = ">=2" },
     { name = "openai" },
+    { name = "pillow", specifier = ">=12.3.0" },
     { name = "pydantic", specifier = ">=2" },
     { name = "pymupdf" },
     { name = "pytest", marker = "extra == 'dev'" },

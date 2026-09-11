@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useRef, useState } from "react";
+import { FormEvent, SVGProps, useRef, useState } from "react";
 
 import {
   Citation,
@@ -108,256 +108,385 @@ export default function Home() {
     }
   }
 
-  const frame = selected?.page;
-  const frameLabel =
-    frame != null ? `FRAME ${String(frame).padStart(3, "0")}` : "FRAME ---";
+  const pageLabel = selected ? `p.\u00a0${selected.page}` : "No page";
   const abstainBanner =
     shown?.abstain_reason === "unsupported"
       ? "The quote is on the page but does not contain the answer."
       : shown?.abstain
-        ? `Abstained: ${shown.abstain_reason ?? "abstain"}. The answer well stays empty.`
+        ? `Abstained: ${shown.abstain_reason ?? "abstain"}.`
         : null;
 
   return (
-    <div className="reader">
-      <header className="bezel-top">
-        <h1 className="wordmark">PageAnchor</h1>
+    <div className="app">
+      <header className="topbar">
+        <div className="brand">
+          <span className="mark" aria-hidden="true">
+            <IconMark />
+          </span>
+          <h1 className="wordmark">PageAnchor</h1>
+        </div>
         <p className="thesis">Every answer cites a verifiable region, or it refuses.</p>
-        <div className="frame-readout" aria-live="polite">
-          {frameLabel}
+        <div className="utilities">
+          <div className="page-readout" aria-live="polite">
+            {pageLabel}
+          </div>
+          <button type="button" className="ghost" disabled={!shown} onClick={() => void onReceipt()}>
+            <IconReceipt />
+            Receipt
+          </button>
         </div>
       </header>
-      <div className="deck">
-        <section className="catalog" aria-label="Ask">
-          <h2 className="vh">Ask</h2>
-          <form className="ask" onSubmit={onAsk}>
-            <div className="modes" role="group" aria-label="Retrieval mode">
-              {MODES.map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  className="mode"
-                  aria-pressed={compare ? item !== "visual" : mode === item}
-                  disabled={compare}
-                  onClick={() => setMode(item)}
-                >
-                  {item}
-                </button>
-              ))}
-            </div>
-            <label className="latch">
-              <input
-                type="checkbox"
-                checked={strict}
-                onChange={(event) => setStrict(event.target.checked)}
-              />
-              Strict
-            </label>
-            <label className="latch">
-              <input
-                type="checkbox"
-                checked={compare}
-                onChange={(event) => {
-                  const on = event.target.checked;
-                  setCompare(on);
-                  if (on && mode === "visual") {
-                    setMode("hybrid");
-                  }
-                }}
-              />
-              Compare TEXT
-            </label>
-            <textarea
-              value={question}
-              onChange={(event) => setQuestion(event.target.value)}
-              placeholder="Ask the frozen corpus"
-              required
-            />
-            <button
-              type="button"
-              className="mode"
-              disabled={!shown}
-              onClick={() => void onReceipt()}
-            >
-              Receipt
-            </button>
-            <button className="load" type="submit" disabled={loading} aria-busy={loading}>
-              {loading ? "Advancing" : "Load frame"}
-            </button>
-          </form>
-          {pair ? (
-            <div className="modes" role="group" aria-label="Compare retrieve">
-              <button
-                type="button"
-                className="mode"
-                aria-pressed={view === "text"}
-                onClick={() => onCompareView("text")}
-              >
-                TEXT
-              </button>
-              <button
-                type="button"
-                className="mode"
-                aria-pressed={view === "hybrid"}
-                onClick={() => onCompareView("hybrid")}
-              >
-                HYBRID
-              </button>
-            </div>
-          ) : null}
-          {error ? <p className="banner fault">{error}</p> : null}
-          {shown?.abstain ? <p className="banner abstain">{abstainBanner}</p> : null}
-          {shown && !shown.abstain && shown.answer ? (
-            <div className="well-plate">
-              <p className="plate-label">Answer</p>
-              <p className="answer">{shown.answer}</p>
-            </div>
-          ) : null}
-          {shown && shown.citations.length > 0 ? (
-            <ul className="citations">
-              {shown.citations.map((citation, index) => (
-                <li key={`${citation.region_id ?? citation.quote}-${index}`}>
-                  <button
-                    type="button"
-                    aria-current={
-                      selected?.region_id === citation.region_id &&
-                      selected?.quote === citation.quote
-                    }
-                    onClick={() => setSelected(citation)}
-                  >
-                    <div className="cite-meta">
-                      <span>
-                        {citation.doc_id} p.{citation.page}
-                      </span>
-                      {citation.verified ? (
-                        <img
-                          className="stamp"
-                          src="/stamps/verified-stamp.png"
-                          alt="verified"
-                        />
-                      ) : (
-                        <span className="bad">
-                          unverified
-                          {citation.quote_in_region && !citation.answer_in_quote
-                            ? " unsupported"
-                            : ""}
-                        </span>
-                      )}
-                    </div>
-                    <p className="quote">{citation.quote}</p>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </section>
 
-        <section className="gate" aria-label="Page">
-          <div className="hood">
-            <div className="sprocket" aria-hidden="true" />
-            <div className={`well${loading ? " busy" : ""}`}>
-              {selected ? (
-                <div className="stage">
-                  <img
-                    alt={`Page ${selected.page} of ${selected.doc_id}`}
-                    src={pagePngUrl(selected.doc_id, selected.page)}
+      <div className="shell">
+        <section className="ask" aria-label="Ask">
+          <h2 className="panel-head">
+            <IconAsk />
+            Ask
+          </h2>
+          <div className="ask-body">
+            <form className="form" onSubmit={onAsk}>
+              <textarea
+                value={question}
+                onChange={(event) => setQuestion(event.target.value)}
+                placeholder="Ask the frozen corpus"
+                required
+              />
+              <div className="modes" role="group" aria-label="Retrieval mode">
+                {MODES.map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    className="mode"
+                    aria-pressed={compare ? item !== "visual" : mode === item}
+                    disabled={compare}
+                    onClick={() => setMode(item)}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+              <div className="latches">
+                <label className="latch">
+                  Strict
+                  <input
+                    className="switch"
+                    type="checkbox"
+                    role="switch"
+                    checked={strict}
+                    onChange={(event) => setStrict(event.target.checked)}
                   />
-                  <div
-                    className="bbox"
-                    style={{
-                      left: `${selected.bbox[0] * 100}%`,
-                      top: `${selected.bbox[1] * 100}%`,
-                      width: `${(selected.bbox[2] - selected.bbox[0]) * 100}%`,
-                      height: `${(selected.bbox[3] - selected.bbox[1]) * 100}%`,
+                </label>
+                <label className="latch">
+                  Compare TEXT
+                  <input
+                    className="switch"
+                    type="checkbox"
+                    role="switch"
+                    checked={compare}
+                    onChange={(event) => {
+                      const on = event.target.checked;
+                      setCompare(on);
+                      if (on && mode === "visual") {
+                        setMode("hybrid");
+                      }
                     }}
                   />
-                </div>
-              ) : shown?.abstain ? (
-                <div className="leader">
-                  <img src="/stamps/no-frame-stamp.png" alt="" />
-                  <p>
-                    Abstained ({shown.abstain_reason}). Citations stay on the left bezel if
-                    present.
-                  </p>
-                </div>
-              ) : null}
-            </div>
-            <div className="sprocket" aria-hidden="true" />
+                </label>
+              </div>
+              <button className="submit" type="submit" disabled={loading} aria-busy={loading}>
+                {loading ? "Asking" : "Ask"}
+                <IconArrow />
+              </button>
+            </form>
+            {pair ? (
+              <div className="modes compare-modes" role="group" aria-label="Compare retrieve">
+                <button
+                  type="button"
+                  className="mode"
+                  aria-pressed={view === "text"}
+                  onClick={() => onCompareView("text")}
+                >
+                  TEXT
+                </button>
+                <button
+                  type="button"
+                  className="mode"
+                  aria-pressed={view === "hybrid"}
+                  onClick={() => onCompareView("hybrid")}
+                >
+                  HYBRID
+                </button>
+              </div>
+            ) : null}
+            {error ? (
+              <div className="banner fault">
+                <p>{faultSummary(error)}</p>
+                {faultSummary(error) !== error ? (
+                  <details>
+                    <summary>Details</summary>
+                    {error}
+                  </details>
+                ) : null}
+              </div>
+            ) : null}
+            {shown?.abstain ? <p className="banner abstain">{abstainBanner}</p> : null}
+            {shown && !shown.abstain && shown.answer ? (
+              <div className="answer-block">
+                <p className="answer">{shown.answer}</p>
+              </div>
+            ) : null}
+            {shown && shown.citations.length > 0 ? (
+              <>
+                <h3 className="subhead">
+                  Citations
+                  <span className="panel-count">{shown.citations.length}</span>
+                </h3>
+                <ul className="citations">
+                  {shown.citations.map((citation, index) => (
+                    <li key={`${citation.region_id ?? citation.quote}-${index}`}>
+                      <button
+                        type="button"
+                        aria-current={
+                          selected?.region_id === citation.region_id &&
+                          selected?.quote === citation.quote
+                        }
+                        onClick={() => setSelected(citation)}
+                      >
+                        <span className="cite-index">{index + 1}</span>
+                        <div className="cite-body">
+                          <p className={citation.verified ? "cite-status ok" : "cite-status bad"}>
+                            {citation.verified ? (
+                              <>
+                                <IconCheck />
+                                Verified
+                              </>
+                            ) : (
+                              <>
+                                Unverified
+                                {citation.quote_in_region && !citation.answer_in_quote
+                                  ? " unsupported"
+                                  : ""}
+                              </>
+                            )}
+                          </p>
+                          <p className="quote">{citation.quote}</p>
+                        </div>
+                        <span className="cite-page">p. {citation.page}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
           </div>
-          <p className="gate-meta">
-            {selected ? selected.doc_id : "Gate idle"}
-            <span className="odometer">{frameLabel}</span>
-          </p>
         </section>
 
-        <section className="index" aria-label="Debug">
-          <h2 className="panel-title">Trace</h2>
-          {shown ? (
-            <>
-              <p className="debug-id">trace {shown.trace_id}</p>
-              <table className="telemetry">
-                <caption>Hits</caption>
-                <thead>
-                  <tr>
-                    <th>Doc</th>
-                    <th>Pg</th>
-                    <th>Score</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {shown.trace.hits.map((hit) => (
-                    <tr key={`${hit.doc_id}-${hit.page}-${hit.source}`}>
-                      <td>{hit.doc_id}</td>
-                      <td>{hit.page}</td>
-                      <td>{hit.score.toFixed(3)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <table className="telemetry">
-                <caption>Verify</caption>
-                <thead>
-                  <tr>
-                    <th>Ok</th>
-                    <th>Region</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {shown.trace.verify.length === 0 ? (
-                    <tr>
-                      <td colSpan={2}>none</td>
-                    </tr>
-                  ) : (
-                    shown.trace.verify.map((row) => (
-                      <tr key={`${row.region_id}-${row.quote}`}>
-                        <td>{row.ok ? "yes" : "no"}</td>
-                        <td>{row.region_id}</td>
+        <section className="document" aria-label="Page">
+          <div className="document-head">
+            <h2 className="panel-head">
+              <IconDocument />
+              Document
+            </h2>
+            <span className="doc-id">{selected ? selected.doc_id : "No page selected"}</span>
+          </div>
+          <div className={`canvas${loading ? " busy" : ""}`}>
+            {selected ? (
+              <div className="stage">
+                <img
+                  alt={`Page ${selected.page} of ${selected.doc_id}`}
+                  src={pagePngUrl(selected.doc_id, selected.page)}
+                />
+                <div
+                  className="bbox"
+                  style={{
+                    left: `${selected.bbox[0] * 100}%`,
+                    top: `${selected.bbox[1] * 100}%`,
+                    width: `${(selected.bbox[2] - selected.bbox[0]) * 100}%`,
+                    height: `${(selected.bbox[3] - selected.bbox[1]) * 100}%`,
+                  }}
+                />
+              </div>
+            ) : shown?.abstain ? (
+              <div className="empty-canvas">
+                <strong>No verified region</strong>
+                <p>
+                  Abstained ({shown.abstain_reason}). Citations stay in Ask if
+                  present.
+                </p>
+              </div>
+            ) : (
+              <div className="empty-canvas">
+                <strong>Ask the corpus</strong>
+                <p>A cited page opens here, with the verified region boxed.</p>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="trace" aria-label="Debug">
+          <h2 className="panel-head">
+            <IconTrace />
+            Trace
+          </h2>
+          <div className="trace-body">
+            {shown ? (
+              <>
+                <p className="trace-id">trace {shown.trace_id}</p>
+                <div className="card">
+                  <h3>Run</h3>
+                  <table className="kv">
+                    <tbody>
+                      <tr>
+                        <th>Mode</th>
+                        <td>{shown.trace.retrieval_mode}</td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-              <table className="telemetry">
-                <caption>Timings ms</caption>
-                <tbody>
-                  {Object.entries(shown.trace.timings_ms).map(([name, value]) => (
-                    <tr key={name}>
-                      <td>{name}</td>
-                      <td>{value.toFixed(0)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <details>
-                <summary>Trace JSON</summary>
-                <pre>{JSON.stringify(shown.trace, null, 2)}</pre>
-              </details>
-            </>
-          ) : (
-            <p className="empty">The TRACE strip prints after /v1/answer returns.</p>
-          )}
+                      <tr>
+                        <th>Abstain</th>
+                        <td>{shown.abstain ? shown.abstain_reason ?? "yes" : "no"}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div className="card">
+                  <table className="grid">
+                    <caption>Hits</caption>
+                    <thead>
+                      <tr>
+                        <th>Doc</th>
+                        <th>Pg</th>
+                        <th>Score</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {shown.trace.hits.map((hit) => (
+                        <tr key={`${hit.doc_id}-${hit.page}-${hit.source}`}>
+                          <td>{hit.doc_id}</td>
+                          <td>{hit.page}</td>
+                          <td>{hit.score.toFixed(3)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="card">
+                  <table className="grid">
+                    <caption>Verify</caption>
+                    <thead>
+                      <tr>
+                        <th>Ok</th>
+                        <th>Region</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {shown.trace.verify.length === 0 ? (
+                        <tr>
+                          <td colSpan={2}>none</td>
+                        </tr>
+                      ) : (
+                        shown.trace.verify.map((row) => (
+                          <tr key={`${row.region_id}-${row.quote}`}>
+                            <td>{row.ok ? "yes" : "no"}</td>
+                            <td>{row.region_id}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="card">
+                  <table className="grid">
+                    <caption>Timings ms</caption>
+                    <tbody>
+                      {Object.entries(shown.trace.timings_ms).map(([name, value]) => (
+                        <tr key={name}>
+                          <td>{name}</td>
+                          <td>{value.toFixed(0)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <details>
+                  <summary>Trace JSON</summary>
+                  <pre>{JSON.stringify(shown.trace, null, 2)}</pre>
+                </details>
+              </>
+            ) : (
+              <p className="empty">Trace prints after /v1/answer returns.</p>
+            )}
+          </div>
         </section>
       </div>
     </div>
+  );
+}
+
+function faultSummary(error: string): string {
+  const head = error.split("|")[0]?.trim() ?? error;
+  if (head.length <= 120) {
+    return head.replace(/\.$/, "");
+  }
+  return "The API could not answer this question.";
+}
+
+function IconMark(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" {...props}>
+      <rect x="1.2" y="1.2" width="9.6" height="9.6" rx="1.4" stroke="currentColor" strokeWidth="1.4" />
+      <rect x="3.2" y="3.6" width="5.6" height="2.4" stroke="currentColor" strokeWidth="1.2" />
+    </svg>
+  );
+}
+
+function IconAsk(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" {...props}>
+      <path d="M3 3.2h10v7.2H6.6L3 13.2V3.2Z" stroke="currentColor" strokeWidth="1.4" />
+    </svg>
+  );
+}
+
+function IconDocument(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" {...props}>
+      <path d="M4 2.5h5.2L12.5 6v7.5H4V2.5Z" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M9.1 2.6V6h3.3" stroke="currentColor" strokeWidth="1.4" />
+    </svg>
+  );
+}
+
+function IconTrace(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" {...props}>
+      <circle cx="4" cy="8" r="1.6" stroke="currentColor" strokeWidth="1.4" />
+      <circle cx="12" cy="4.2" r="1.6" stroke="currentColor" strokeWidth="1.4" />
+      <circle cx="12" cy="11.8" r="1.6" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M5.5 7.3 10.4 4.9M5.5 8.7 10.4 11.1" stroke="currentColor" strokeWidth="1.4" />
+    </svg>
+  );
+}
+
+function IconReceipt(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" {...props}>
+      <path d="M4 2.5h8v11l-1.2-.8-1.2.8-1.2-.8-1.2.8-1.2-.8-1.2.8v-11Z" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M6 5.5h4M6 8h4M6 10.4h2.4" stroke="currentColor" strokeWidth="1.4" />
+    </svg>
+  );
+}
+
+function IconArrow(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" {...props}>
+      <path d="M3 8h9.2M8.8 4.4 12.4 8 8.8 11.6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square" />
+    </svg>
+  );
+}
+
+function IconCheck(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true" {...props}>
+      <path d="M2.2 6.1 4.7 8.6 9.8 3.4" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
   );
 }

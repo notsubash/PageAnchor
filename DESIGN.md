@@ -1,300 +1,324 @@
 ---
 name: PageAnchor
-description: A microfilm reader for grounded PDF answers; the page is a film frame, a citation is a cadmium reticle, a refusal is NO FRAME.
+description: A dark zinc workbench; ask on the left, prove it on the page, inspect Trace on the right.
 colors:
-  reticle: "#d85a1a"
-  hood: "#16181a"
-  enamel: "#5c6158"
-  enamel-dark: "#3e433c"
-  enamel-edge: "#2a2e29"
-  putty: "#d9d1bc"
-  putty-ink: "#1a1c18"
-  putty-muted: "#534e42"
-  well: "#0e1012"
-  led: "#e4e7df"
-  led-dim: "#c5c9bf"
-  fault: "#c43c2a"
-  focus: "#f0ead8"
-  plate: "#8a8676"
-  fault-slip: "#f3d4ce"
-  fault-ink: "#6b1c14"
-  abstain-slip: "#efe3b8"
-  abstain-ink: "#5c4a10"
-  film: "#090a0b"
+  zinc-bg: "#0b0b0c"
+  zinc-panel: "#111113"
+  zinc-field: "#161618"
+  zinc-border: "#242428"
+  zinc-text: "#ececef"
+  zinc-muted: "#8a8a93"
+  canvas: "#09090b"
+  ask: "#f4f4f5"
+  ask-ink: "#0b0b0c"
+  ask-well: "#171b24"
+  ask-well-border: "#3d4f73"
+  ask-placeholder: "#9aa3b8"
+  proof: "#5b8def"
+  proof-wash: "rgb(91 141 239 / 18%)"
+  answer-well: "rgb(91 141 239 / 16%)"
+  answer-border: "#4a66a3"
+  fault: "#f2a0a0"
+  fault-well: "#2a1616"
+  abstain: "#e8c36a"
+  abstain-well: "#2a2414"
 typography:
   display:
-    fontFamily: "Barlow Condensed, Segoe UI, sans-serif"
-    fontSize: "1.35rem"
-    fontWeight: 700
-    lineHeight: 1.4
-    letterSpacing: "0.16em"
+    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "1rem"
+    fontWeight: 560
+    lineHeight: 1.45
+    letterSpacing: "-0.02em"
   headline:
-    fontFamily: "Barlow Condensed, Segoe UI, sans-serif"
-    fontSize: "0.95rem"
-    fontWeight: 700
-    lineHeight: 1.4
-    letterSpacing: "0.14em"
+    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "0.875rem"
+    fontWeight: 560
+    lineHeight: 1.45
+    letterSpacing: "-0.01em"
   title:
-    fontFamily: "Barlow Condensed, Segoe UI, sans-serif"
-    fontSize: "1.05rem"
-    fontWeight: 700
-    lineHeight: 1.4
-    letterSpacing: "0.12em"
+    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "0.9rem"
+    fontWeight: 560
+    lineHeight: 1.45
+    letterSpacing: "normal"
   body:
-    fontFamily: "Barlow, Segoe UI, sans-serif"
+    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
     fontSize: "15px"
     fontWeight: 400
-    lineHeight: 1.4
+    lineHeight: 1.5
     letterSpacing: "normal"
   label:
-    fontFamily: "Barlow Condensed, Segoe UI, sans-serif"
-    fontSize: "0.78rem"
-    fontWeight: 700
-    lineHeight: 1.4
-    letterSpacing: "0.12em"
+    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "0.8rem"
+    fontWeight: 560
+    lineHeight: 1.45
+    letterSpacing: "0.04em"
   mono:
-    fontFamily: "Azeret Mono, ui-monospace, monospace"
-    fontSize: "0.78rem"
-    fontWeight: 500
-    lineHeight: 1.4
-    letterSpacing: "0.06em"
+    fontFamily: "Geist Mono, ui-monospace, monospace"
+    fontSize: "0.8rem"
+    fontWeight: 450
+    lineHeight: 1.45
+    letterSpacing: "normal"
 rounded:
-  latch: "1px"
-  sm: "2px"
-  mode: "3px"
+  sm: "4px"
+  md: "6px"
+  pill: "999px"
 spacing:
-  xs: "0.35rem"
-  sm: "0.7rem"
-  md: "1rem"
-  lg: "1.25rem"
+  xs: "0.3rem"
+  sm: "0.45rem"
+  md: "0.7rem"
+  lg: "0.85rem"
 components:
   button-primary:
-    backgroundColor: "{colors.plate}"
-    textColor: "{colors.putty-ink}"
+    backgroundColor: "{colors.ask}"
+    textColor: "{colors.ask-ink}"
     typography: "{typography.title}"
-    rounded: "{rounded.sm}"
-    height: "3.15rem"
+    rounded: "{rounded.md}"
+    height: "2.25rem"
   button-primary-hover:
-    backgroundColor: "{colors.plate}"
-    textColor: "{colors.putty-ink}"
-  button-primary-active:
-    backgroundColor: "{colors.plate}"
-    textColor: "{colors.putty-ink}"
+    backgroundColor: "{colors.ask}"
+    textColor: "{colors.ask-ink}"
+  button-ghost:
+    backgroundColor: "transparent"
+    textColor: "{colors.zinc-text}"
+    rounded: "{rounded.sm}"
+    padding: "0 0.6rem"
+    height: "1.85rem"
+  button-ghost-hover:
+    backgroundColor: "{colors.zinc-field}"
+    textColor: "{colors.zinc-text}"
   button-mode:
-    backgroundColor: "{colors.enamel}"
-    textColor: "{colors.led}"
-    typography: "{typography.headline}"
-    rounded: "{rounded.mode}"
-    height: "2.6rem"
+    backgroundColor: "transparent"
+    textColor: "{colors.zinc-muted}"
+    typography: "{typography.label}"
+    rounded: "{rounded.sm}"
+    height: "1.85rem"
+  button-mode-hover:
+    backgroundColor: "rgb(255 255 255 / 5%)"
+    textColor: "{colors.zinc-text}"
   button-mode-pressed:
-    backgroundColor: "{colors.enamel-edge}"
-    textColor: "{colors.led}"
-    rounded: "{rounded.mode}"
-    height: "2.6rem"
+    backgroundColor: "{colors.ask}"
+    textColor: "{colors.ask-ink}"
+    typography: "{typography.label}"
+    rounded: "{rounded.sm}"
+    height: "1.85rem"
+  button-mode-pressed-hover:
+    backgroundColor: "#fff"
+    textColor: "{colors.ask-ink}"
   input-query:
-    backgroundColor: "{colors.well}"
-    textColor: "{colors.led}"
+    backgroundColor: "{colors.ask-well}"
+    textColor: "{colors.zinc-text}"
     typography: "{typography.body}"
-    rounded: "{rounded.sm}"
+    rounded: "{rounded.md}"
     padding: "0.7rem 0.75rem"
-  citation-plate:
-    backgroundColor: "{colors.putty}"
-    textColor: "{colors.putty-ink}"
-    typography: "{typography.body}"
-    rounded: "{rounded.sm}"
-    padding: "0.55rem 0.6rem"
-  well-plate:
-    backgroundColor: "{colors.putty}"
-    textColor: "{colors.putty-ink}"
-    rounded: "{rounded.sm}"
-    padding: "0.65rem 0.7rem"
-  frame-readout:
-    backgroundColor: "{colors.well}"
-    textColor: "{colors.led}"
+  switch-off:
+    backgroundColor: "#2a2a2e"
+    rounded: "{rounded.pill}"
+    height: "1.05rem"
+    width: "1.85rem"
+  switch-on:
+    backgroundColor: "{colors.proof}"
+    rounded: "{rounded.pill}"
+    height: "1.05rem"
+    width: "1.85rem"
+  page-readout:
+    backgroundColor: "{colors.zinc-field}"
+    textColor: "{colors.zinc-muted}"
     typography: "{typography.mono}"
     rounded: "{rounded.sm}"
-    padding: "0.35rem 0.7rem"
+    padding: "0.28rem 0.5rem"
+  citation-row:
+    backgroundColor: "transparent"
+    textColor: "{colors.zinc-text}"
+    rounded: "{rounded.sm}"
+    padding: "0.45rem 0.5rem"
+  citation-row-current:
+    backgroundColor: "rgb(91 141 239 / 8%)"
+    textColor: "{colors.zinc-text}"
+    rounded: "{rounded.sm}"
+    padding: "0.45rem 0.5rem"
   banner-fault:
-    backgroundColor: "{colors.fault-slip}"
-    textColor: "{colors.fault-ink}"
+    backgroundColor: "{colors.fault-well}"
+    textColor: "{colors.fault}"
     rounded: "{rounded.sm}"
-    padding: "0.65rem 0.7rem"
+    padding: "0.55rem 0.65rem"
   banner-abstain:
-    backgroundColor: "{colors.abstain-slip}"
-    textColor: "{colors.abstain-ink}"
+    backgroundColor: "{colors.abstain-well}"
+    textColor: "{colors.abstain}"
     rounded: "{rounded.sm}"
-    padding: "0.65rem 0.7rem"
+    padding: "0.55rem 0.65rem"
+  card-trace:
+    backgroundColor: "{colors.zinc-panel}"
+    textColor: "{colors.zinc-text}"
+    rounded: "{rounded.md}"
+    padding: "0.65rem 0.7rem 0.2rem"
+  answer-block:
+    backgroundColor: "{colors.answer-well}"
+    textColor: "{colors.zinc-text}"
+    rounded: "{rounded.md}"
+    padding: "0.75rem 0.8rem"
 ---
 
 # Design System: PageAnchor
 
 ## Overview
 
-**Creative North Star: "The Lighted Film Gate"**
+**Creative North Star: "The Zinc Workbench"**
 
-PageAnchor is a microfilm reader, not a chat console. The visitor sits at a flocked hood with olive-gray enamel bezels. A query is loaded on the left catalog, the cited page appears as a film frame in the center gate, and the TRACE strip on the right prints the index. Belief lives in a boxed region on the page, or in a stamped refuse. Fluency in a card is not the product.
+PageAnchor is a dark operator workbench. Ask sits on the left, the cited page dominates the center, and Trace is the index on the right. Belief lives in a boxed region on the page, or in a refusal. Fluency in a card is not the product.
 
-The machine is dense and tactile. Enamel, putty, and charcoal flock are tiled grain, not flat fills. Light is phosphor LED on dark metal, or dark ink on putty plates. The only hot color is matte cadmium, used as a finder reticle and as the VERIFIED stamp. Corners stay machined and nearly square. Motion is a short reticle snap, not page choreography.
+The chassis is near-black zinc: flat panels, 1px hairlines, 6px corners. Type is Geist for the operator and Geist Mono for measurements. The primary action is white Ask. Blue is scarce: it marks the selected region, a verified citation, a checked switch, the focus ring, the query well, and the answer well. There is no enamel, no sprocket rail, no putty plate, and no cadmium chrome.
 
-This world rejects equal three-column chat / PDF / sources cards, round consumer chrome, and traffic-light status pills. A citation is not a highlighted snippet in a transcript. A refusal is not a polite empty state in the catalog; it is NO FRAME in the gate.
+This world rejects the microfilm reader and equal chat / PDF / sources cards. It also rejects round consumer chrome, traffic-light status pills, and a blue Ask button. Refusal is a first-class banner plus an empty canvas, not a polite invented answer.
 
 **Key Characteristics:**
-- Charcoal flocked hood, olive-gray enamel bezels, putty catalog insets
-- Center gate dominates; catalog and TRACE are side bezels, not peer cards
-- Sprocket rails and inset charcoal wells as hardware, not decoration
-- Barlow Condensed on the machine; Azeret Mono only for measurements
-- Matte cadmium reticle and VERIFIED stamp as the sole proof accent
-- Abstain empties the answer well and shows NO FRAME in the gate
+- Near-black zinc panels, 1px hairlines, 6px surfaces and 4px compact chrome
+- 48px top bar; Ask ~22% / document canvas / Trace ~22%
+- Geist for operator type; Geist Mono only for measures and ids
+- White Ask and pressed mode chips; proof blue for selection, verified, the query well, and the answer well
+- Page PNG on a darker canvas well; bbox is the citation
+- Abstain omits the answer block and keeps citations for the trail
 
 ## Colors
 
-The palette is industrial enamel and flock, with one cadmium finder and oxide-red fault ink. Grain textures (`/textures/hood.png`, `enamel.png`, `putty.png`) ride on top of these fills; the fill is the fallback, the grain is the material.
+Cool near-black zinc with one white action and one scarce proof blue.
 
 ### Primary
-- **Matte Cadmium** (`reticle`): The finder. Drawn as a 2px inset box plus a 2px outline offset 3px, with a 16% cadmium wash, on the cited page region. The VERIFIED stamp uses the same hue as ink on putty. It is not a button fill, not a chart series, and not a page background.
+- **Ask White** (`ask` / `ask-ink`): The Ask control and the pressed segment in the mode group. Hover brightens the fill slightly. This is the only large light rectangle in the chrome.
 
 ### Secondary
-- **Oxide Fault** (`fault`): Unverified lettering on a citation plate (`UNVERIFIED` in condensed caps). Not a success/fail pair with green. Unused CSS `--verified` green is not part of this system.
+- **Proof Blue** (`proof` / `proof-wash`): Selection and verified, plus the query and answer wells. Drawn as a 2px inset box plus an 18% wash on the cited region; as the selected citation hairline; as Verified status; as a checked switch track; as the 12px mark icon; as the 2px focus ring; as the query-well tint and the answer-well wash. Not a button fill, not a heading color, not a pane background.
 
 ### Neutral
-- **Flock Hood** (`hood`): The reader chassis and the cavity around the gate.
-- **Olive Enamel** (`enamel`): Top rail and left catalog bezel, tiled with enamel grain and a faint top-lit glaze.
-- **Enamel Dark** (`enamel-dark`): Right TRACE bezel and the gate-meta strip under the hood.
-- **Enamel Edge** (`enamel-edge`): Hairline seams, mode-key borders, latch track.
-- **Putty** (`putty`): Catalog insets: citation plates and the answer well. Tiled with putty grain. Ink on putty is `putty-ink`; muted plate captions are `putty-muted`.
-- **Charcoal Well** (`well`): Inset instrument windows: query field, frame readout, odometer, TRACE JSON. LED type sits here, never putty ink.
-- **Film Well** (`film`): The lighted gate behind the page PNG, ringed by a 6px `#111315` frame.
-- **Phosphor LED** (`led`): Type on enamel and in wells. Dimmer instrument labels use `led-dim`.
-- **Putty Plate** (`plate`): Fallback body of the primary LOAD FRAME control when the riveted-plate raster is absent.
-- **Lamp Focus** (`focus`): Keyboard ring only (`2px` solid, `2px` offset).
-- **Fault Slip** (`fault-slip` / `fault-ink`): Catalog banner when the request fails.
-- **Abstain Slip** (`abstain-slip` / `abstain-ink`): Catalog banner when the model abstains. The gate still shows NO FRAME; this slip does not replace it.
+- **Near-black Zinc** (`zinc-bg`): App chassis, top bar, and pane grounds.
+- **Zinc Panel** (`zinc-panel`): Trace cards, one step up from the chassis.
+- **Zinc Field** (`zinc-field`): Inset controls: mode track, page readout, JSON well, ghost hover, citation hover.
+- **Ask Well** (`ask-well` / `ask-well-border` / `ask-placeholder`): The query textarea. A proof-tinted zinc field so the empty ask box is the first landing, not another mute inset. Placeholder is `#9aa3b8` for contrast on the tinted well. Not a pane fill.
+- **Answer Well** (`answer-well` / `answer-border`): The grounded answer card. A 16% proof wash with a mixed proof hairline so the claim reads apart from Trace cards. Omitted on abstain.
+- **Canvas Well** (`canvas`): The document stage behind the page PNG, slightly darker than the chassis.
+- **Zinc Hairline** (`zinc-border`): Every seam: top bar, pane splits, fields, cards, readout, ghost.
+- **Zinc Ink** (`zinc-text`): Body, wordmark, panel heads, Ask label, citation quotes.
+- **Zinc Mute** (`zinc-muted`): Thesis, instrument labels, empty copy, unpressed modes, unverified-neutral captions.
+- **Fault Rose** (`fault` / `fault-well`): Request-failure banner in Ask.
+- **Abstain Amber** (`abstain` / `abstain-well`): Abstain banner in Ask. Does not replace the empty canvas.
 
 ### Named Rules
-**The Cadmium Finder Rule.** Cadmium marks proof: the page reticle and the VERIFIED stamp. If a screen needs more orange, the finder has already been overused.
+**The White Ask Rule.** Ask is zinc-white on near-black ink. A blue Ask, a cadmium Ask, or a full-width enamel plate is out of world.
 
-**The LED-on-Enamel Rule.** Phosphor LED type lives on enamel and in charcoal wells. Putty ink lives on putty plates. Do not park dark body copy on the hood, and do not park LED type on putty.
+**The Blue-for-Proof Rule.** Proof blue marks the bbox, the current citation, Verified, a checked switch, focus, the query well tint, and the answer well. If a screen needs more blue, the finder has already been overused. It is not a button fill, a heading color, or a pane background.
 
 ## Typography
 
-**Display Font:** Barlow Condensed (with Segoe UI, sans-serif)
-**Body Font:** Barlow (with Segoe UI, sans-serif)
-**Label/Mono Font:** Azeret Mono (with ui-monospace)
+**Display Font:** Geist (with ui-sans-serif, system-ui)
+**Body Font:** Geist (same stack, 15px on the root)
+**Label/Mono Font:** Geist Mono (with ui-monospace)
 
-**Character:** Condensed industrial sans is the machine voice: wordmark, bezels, keys, actions. Barlow regular is the catalog reading voice: thesis, quotes, answers. Mono is an instrument face, never a display face.
+**Character:** A dense dashboard sans. The wordmark is a slightly heavy sentence-case name, not a condensed machine stamp. Mono is an instrument face for pages, ids, scores, and JSON.
 
 ### Hierarchy
-- **Display** (700, 1.35rem, 0.16em, uppercase): `PageAnchor` wordmark on the top enamel rail.
-- **Headline** (700, 0.95rem, 0.14em, uppercase): TRACE `panel-title`, telemetry captions, enamel section labels.
-- **Title** (700, 1.05rem, 0.12em, uppercase): Primary LOAD FRAME action.
-- **Body** (400, 15px / 0.92rem, 1.4): Thesis (max ~42ch), quotes, answers, leader copy, banners.
-- **Label** (700, 0.78rem–0.85rem, 0.08em–0.12em, uppercase): Plate captions, STRICT caption, mode keys, UNVERIFIED.
-- **Mono** (500, 0.72rem–0.95rem, 0.06em–0.08em): `FRAME 00N` readout and odometer, citation `doc_id p.N`, TRACE id, scores, timings, JSON dump.
+- **Display** (560, 1rem, -0.02em): `PageAnchor` wordmark in the top bar.
+- **Headline** (560, 0.875rem, -0.01em): `Ask`, `Document`, `Trace`, and `Citations` panel heads. Thesis uses the same size at body weight in mute.
+- **Title** (560, 0.9rem): Ask label. Empty-canvas titles use the same weight.
+- **Body** (400, 15px / 1.5): Answers (0.95rem), quotes (0.875rem), latch captions (0.9rem), banners (0.875rem). Thesis max-width is 52ch on desktop.
+- **Label** (560, 0.8rem, 0.04em, uppercase): Mode segments (`text` / `visual` / `hybrid` and compare `TEXT` / `HYBRID`). Cite status is 0.75rem at body case.
+- **Mono** (450, 0.75rem–0.8rem): Page readout, `doc_id`, cite index and `p. N`, `trace {id}`, scores, timings, JSON (0.75rem).
 
 ### Named Rules
-**The Mono-for-Measure Rule.** Azeret Mono is for counters, identifiers, and scores. Wordmark, mode keys, TRACE headings, and LOAD FRAME stay condensed sans. A mono headline is a defect.
+**The Mono-for-Measure Rule.** Geist Mono is for counters, identifiers, and dumps. Wordmark, panel heads, mode chips, and Ask stay Geist sans. A mono wordmark is a defect.
 
 ## Layout
 
-The reader is a full-viewport column: enamel top rail, then a three-pane `deck`. The deck is `minmax(17.5rem, 22vw) minmax(0, 1fr) minmax(16rem, 21vw)`. The center gate is the remaining width and must read as the largest pane. Catalog and TRACE pad `1rem 0.95rem 1.25rem`. The top rail pads `0.7rem 1rem` and is `1fr auto auto` (wordmark, thesis, frame readout).
+The overlay is a full-viewport column: a 48px top bar, then a three-pane shell. The top bar is `minmax(11rem, 1fr) minmax(0, 46rem) minmax(11rem, 1fr)`: wordmark, centered thesis, page readout plus Receipt. It pads `0.45rem 0.85rem` with a bottom hairline.
 
-The gate hood is a three-column film path: `18px` sprocket, page well, `18px` sprocket. Hood min-height is `28rem`. The page image may grow to `calc(100vh - 8.5rem)`. An enamel-dark meta strip under the hood holds the `doc_id` and a nested odometer.
+The shell is `minmax(16.5rem, 22vw) minmax(0, 1fr) minmax(16rem, 22vw)`. Ask and Trace are side indexes, not peer cards. Horizontal pane padding is `0.85rem`. Form stack gap is `0.7rem`. Citation rows stack at `0.3rem`. The document canvas margins `0.7rem` and is the remaining width.
 
-Rhythm is tight instrument spacing: `0.35rem` between mode keys, `0.7rem` in the ask stack, `0.4rem` between citation plates. The catalog is a vertical stack (modes, strict, query well, LOAD FRAME, banners, answer, citations), not a toolbar.
+Rhythm is dashboard-tight: `0.45rem` for control clusters, `0.7rem` for stacked blocks, `0.85rem` for pane inset. Body size is 15px.
 
-At `960px` the top rail and the deck each collapse to one column. The gate well may release its desktop max-height. Stacking does not make the three panes equal cards; the gate still occupies the middle of the story.
+At `960px` the top bar wraps (brand and utilities on row one, thesis full-width on row two, left-aligned). The shell becomes one column: Ask, Document, Trace, each separated by a bottom hairline. The page image may release its desktop max-height. Stacking does not make the three panes equal cards.
 
 ### Named Rules
-**The Gate Dominates Rule.** Catalog stays about a fifth of the width, TRACE about a fifth, gate takes the rest. If the three panes can be swapped without changing the page, the chassis is wrong.
+**The Canvas Dominates Rule.** Ask stays about a fifth of the width, Trace about a fifth, the document canvas takes the rest. If the three panes can be swapped without changing the page, the chassis is wrong.
 
 ## Elevation & Depth
 
-Depth is cavity, not card lift. The hood is a dark flocked recess (`inset 0 30px 50px rgb(0 0 0 / 55%)`). Instrument windows are punched in (`inset 0 2px 6px` to `inset 0 3px 8px` at 55% black). Enamel bezels are top-glazed metal with a hairline `enamel-edge` seam. Catalog and TRACE shade inward toward the gate (`inset ±10px 0 18px`). Putty plates sit inset in the catalog, not raised off it.
+Depth is hairline and tone, not card lift. Panes share the chassis fill and split with a 1px zinc hairline. Fields and Trace cards step to `zinc-field` or `zinc-panel`. The query and the grounded answer step to proof-tinted wells. There is no inset enamel glaze and no punched-well shadow on inputs.
 
-The top enamel rail is the one place a drop shadow is structural: `0 8px 18px rgb(0 0 0 / 35%)` plus an inset highlight, so the rail sits on the hood. That is a bezel, not a floating card. Mode keys and LOAD FRAME use inset highlights at rest and inset crush when pressed (`translateY(2px)`).
-
-The film well is a hard optical frame: `inset 0 0 0 1px #000` and `0 0 0 6px #111315`. The reticle is a finder drawn on the page, not a shadow.
+The one offset shadow is the page PNG on the canvas: a dark ambient under the paper so the document reads as an object in the well. Trace cards and Ask chrome stay flat. The bbox is an inset 2px proof ring, not a drop shadow.
 
 ### Shadow Vocabulary
-- **Bezel rail** (`box-shadow: inset 0 1px 0 rgb(255 255 255 / 16%), 0 8px 18px rgb(0 0 0 / 35%)`): Top enamel bar only.
-- **Hood cavity** (`box-shadow: inset 0 30px 50px rgb(0 0 0 / 55%)`): Flocked gate surround.
-- **Well punch** (`box-shadow: inset 0 3px 8px rgb(0 0 0 / 55%)`): Query field; readout and odometer use the same family at 2px/6px.
-- **Putty inset** (`box-shadow: inset 0 2px 8px rgb(0 0 0 / 28%)`): Answer well and citation plates (current citation plates use 2px/6px at 22%).
-- **Key glaze** (`box-shadow: inset 0 1px 0 rgb(255 255 255 / 18%)`): Unpressed mode keys.
-- **Key crush** (`box-shadow: inset 0 3px 6px rgb(0 0 0 / 55%)`): Pressed mode keys and busy LOAD FRAME.
-- **Pane shade** (`box-shadow: inset -10px 0 18px rgb(0 0 0 / 22%)` catalog; mirrored on TRACE): Bezel edges toward the gate.
+- **Page stage** (`box-shadow: 0 18px 40px rgb(0 0 0 / 35%)`): The cited page PNG only, sitting on the canvas well.
+- **BBox ring** (`box-shadow: inset 0 0 0 2px` proof, plus `proof-wash` fill): The selected region on that page.
 
 ### Named Rules
-**The Cavity Rule.** Recess the well; do not lift the plate. Offset drop shadows belong only to the top enamel rail sitting on the hood.
+**The Hairline Depth Rule.** Chrome is flat. Separate surfaces with 1px zinc hairlines and one-step fills. Do not lift Ask, Trace, or the top bar. The page on the canvas is the only object that casts.
 
 ## Shapes
 
-Corners are machined, almost square. Instrument wells, plates, banners, and LOAD FRAME use `2px`. Mode keys use `3px`. The STRICT track and thumb use `1px`. There are no pills, no 8–16px cards, no circular icon buttons.
+Surfaces and Ask use 6px. Compact chrome uses 4px: ghost Receipt, page readout, inner mode chips, banners, citation rows, JSON well, and the 1.35rem mark. Switches are the only pills (999px track and thumb).
 
-Sprocket rails are a repeating rectangular perforation (`11px` black, `3px` gap implied in the 14/26 rhythm, then `#2a2d30` tooth). The reticle is a rectangle aligned to the citation bbox, not a rounded highlight. The film well is a hard-rect optical aperture.
-
-Hairlines are `1px solid` `enamel-edge` on keys and LOAD FRAME, or `rgb(255 255 255 / 10%)` row rules in TRACE. TRACE is a collapsed data table, not a card list.
+Hairlines are 1px solid zinc-border. The selected citation adds a 1px proof hairline. The bbox is a sharp rectangle aligned to the citation, not a rounded highlight. Trace is captioned tables inside 6px cards, not a chip list.
 
 ### Named Rules
-**The Machined Corner Rule.** If a radius reads as a consumer control (pill, 8px+ card), it is out of world. Stay at 1–3px.
+**The Six-and-Four Rule.** 6px on panes, fields, Ask, canvas, and Trace cards. 4px on compact controls. Pills only on switches. 16px consumer cards and circular icon buttons are out of world.
 
 ## Components
 
-Hardware, not UI kit. Resting chrome is enamel grain. Operator text is an inset well. Evidence is putty. Proof is cadmium on the page.
+Quiet zinc chrome. One white Ask. Proof is a box on the page.
 
 ### Buttons
-- **Shape:** Machined rectangle (`2px` on LOAD FRAME, `3px` on mode keys), `1px` enamel-edge border, inset glaze.
-- **Primary (LOAD FRAME):** Riveted enamel plate, min-height `3.15rem`, condensed 700 1.05rem, 0.12em, uppercase, `plate` body with `putty-ink`. Hover: brightness 1.04. Active/busy: `translateY(2px)` and inset crush. Disabled/busy: `opacity: 0.7`, wait cursor. Busy label in the build is `Advancing`.
-- **Mode keys:** Three equal enamel keys (TEXT / VISUAL / HYBRID). Unpressed: vertical enamel gradient `#6b7068` to `#4f544c`. Pressed (`aria-pressed="true"`): `#2d322c` to `#1f221e` with inset crush. Hover: brightness 1.06.
-- **Focus:** `2px` `focus` outline, `2px` offset, on all controls.
+- **Shape:** 6px on Ask, 4px on ghost Receipt and inner mode chips. Ask has no border. Ghost and the mode track use a 1px zinc hairline.
+- **Primary (Ask):** Full-width of the Ask pane, min-height 2.25rem, Geist 560 0.9rem, `ask` fill and `ask-ink`. Trailing 16px stroke arrow. Hover: `brightness(1.06)`. Disabled/busy: opacity 0.55, wait cursor, label `Asking`.
+- **Ghost (Receipt):** Transparent, min-height 1.85rem, padding `0 0.6rem`, zinc ink, optional 16px stroke icon. Hover fills `zinc-field`. Disabled: opacity 0.45.
+- **Mode segments:** Three equal cells in a 6px `zinc-field` track (padding and gap 0.15rem). Unpressed: mute, transparent. Hover (unpressed only): zinc ink on a 5% white wash. Pressed (`aria-pressed="true"`): the same white chip as Ask, with `ask-ink` that stays dark on hover. Compare uses the same track at two columns. Uppercase 0.8rem 560 with 0.04em.
+- **Focus:** 2px solid proof, 2px offset, on every control.
 
 ### Chips
-Not used. Retrieval mode is three hardware keys, not a chip row. Verified is a raster stamp, not a chip.
+Not used. Retrieval mode is the segmented track above. Verified is a 0.75rem proof-colored status line with a 12px stroke check, not a pill.
 
 ### Cards / Containers
-- **Corner Style:** `2px` on putty plates; bezels themselves have no radius.
-- **Background:** Enamel grain on catalog and TRACE; putty grain on answer and citation plates; flock on the hood.
-- **Shadow Strategy:** Inset only; see Elevation.
-- **Border:** Enamel hairline on keys; cadmium 2px ring on the selected citation (`aria-current="true"`).
-- **Internal Padding:** Putty wells `0.65rem 0.7rem`; citations `0.55rem 0.6rem`.
+- **Corner Style:** 6px on Trace cards, answer block, canvas, and query.
+- **Background:** Chassis on panes; `zinc-panel` on Trace cards; `ask-well` on the query; `answer-well` on the grounded answer; `zinc-field` on remaining inset wells.
+- **Shadow Strategy:** Flat chrome; page-stage shadow only on the PNG. See Elevation.
+- **Border:** 1px zinc hairline on Trace cards, canvas, and fields. Query uses `ask-well-border`. Answer uses `answer-border`. Current citation uses a proof hairline.
+- **Internal Padding:** Trace cards `0.65rem 0.7rem`; answer `0.75rem 0.8rem`; pane inset `0.85rem`.
 
 ### Inputs / Fields
-- **Style:** Query is a charcoal well, no border, `2px` radius, min-height `6rem`, LED type, placeholder `#9aa193`.
-- **Focus:** The global `focus` ring. No glow.
-- **STRICT:** An operator latch on the catalog bezel (condensed uppercase caption). The current track-and-thumb is a CSS stand-in, not the plate language to copy.
-- **Error / Disabled:** Request failure is a fault slip in the catalog. Abstain is an abstain slip plus NO FRAME in the gate; the answer well is omitted.
+- **Style:** Query is an `ask-well`, 1px `ask-well-border`, 6px, min-height 6.5rem, zinc ink, `#9aa3b8` placeholder.
+- **Focus:** The global proof ring. No glow.
+- **Switches:** 1.85 × 1.05rem pills. Off track `#2a2a2e` with `#c7c7cc` thumb; on track is proof with a white thumb. Captions are 0.9rem Geist (`Strict`, `Compare TEXT`).
+- **Error / Disabled:** Request failure is a fault banner in Ask. Abstain is an amber banner; the answer block is omitted; the canvas shows `No verified region` while citations may remain.
 
 ### Navigation
-There is one route. The top rail is identity and frame count, not a nav bar. TRACE is an index strip, not a menu.
+One route. The top bar is identity and utilities, not a site nav. Panel heads are 0.875rem 560 with mute 16px stroke glyphs. Trace is an index, not a menu.
 
-### Frame readout
-Tabular instrument in a punched well. Copy is `FRAME 00N` or `FRAME ---`, Azeret Mono ~0.95rem on the rail and ~0.78rem in the gate odometer. Zero-pad page numbers; do not invent a seven-segment font.
+### Page readout
+Compact 4px field in the top bar. Copy is `p. N` or `No page`, Geist Mono ~0.75rem mute. It is a live page label, not a film-frame odometer.
 
-### Citation plate
-Full-width putty button. Meta row is mono `doc_id p.N` plus either the VERIFIED stamp (`4.8rem × 1.55rem`, cropped to the inked word) or condensed `UNVERIFIED` in `fault`. Quote is Barlow 0.92rem. Selected plate gets the cadmium ring. Hover may lighten the putty to `#e7e0ce`.
+### Citation row
+Full-width transparent button, 4px, three columns: mono index, quote body, mono `p. N`. Status is `Verified` in proof or `Unverified` / `Unverified unsupported` in fault. Quote clamps to two lines at 0.875rem. Hover fills `zinc-field`. Current (`aria-current="true"`): proof hairline and 8% proof tint.
 
-### Cadmium reticle
-Absolutely positioned on the page PNG from the citation bbox. `2px` inset cadmium, `2px` outline, `3px` offset, 16% cadmium wash. Enters in `220ms ease-out` from a center clip (`clip-path: inset(48%)`) to full. Pointer events none. This is the citation, not a tooltip.
+### Bounding box
+Absolutely positioned on the page PNG from the citation bbox. Inset 2px proof ring, 18% proof wash, min-height 8px, pointer-events none. Enters in 180ms ease-out from a center clip (`inset(46%)`). Respect `prefers-reduced-motion`. This is the citation, not a tooltip.
 
-### NO FRAME leader
-Centered in the idle/abstain gate. The NO FRAME stamp (stencil condensed on flock) sits above a short abstain reason. Max width `22rem`. The catalog answer well stays empty.
+### Document canvas
+6px well, 1px hairline, `canvas` fill. Loaded pages sit on a white stage with the page-stage shadow, max-height `calc(100vh - 7.5rem)` on desktop. Busy dims the image to 0.55. Empty copy is centered, max-width 22rem: `Ask the corpus` or `No verified region`.
 
-### TRACE strip
-Enamel-dark bezel. Condensed `TRACE` title, mono `trace {id}`, then captioned tables (Hits, Verify, Timings ms) with condensed uppercase headers and mono cells. Optional `Trace JSON` disclosure into a `0.68rem` mono well, max-height `18rem`. Empty copy: `The TRACE strip prints after /v1/answer returns.`
+### Trace cards
+6px `zinc-panel` cards with 0.8rem mute captions and mono cells. Row rules are zinc-border at 80%. Trace id is mute mono. JSON disclosure is a 4px `zinc-field` well, 0.75rem mono, max-height 16rem. Empty copy: `Trace prints after /v1/answer returns.`
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** keep the cited page PNG in the flocked gate with 18px sprocket rails, and draw the bbox as a cadmium reticle on that image.
-- **Do** set machine lettering in Barlow Condensed uppercase on enamel, and measurements in Azeret Mono inside charcoal wells.
-- **Do** put quotes and answers on putty plates with putty ink; put operator controls on the left enamel bezel.
-- **Do** refuse in the gate with NO FRAME and keep the answer well unrendered when `abstain` is true.
-- **Do** mark verified citations with the cadmium VERIFIED stamp raster, not with a color fill.
+- **Do** keep Ask near 22vw, Trace near 22vw, and let the document canvas take the rest, under a 48px zinc top bar.
+- **Do** set operator type in Geist at 15px / 560 for names and actions, and measurements in Geist Mono.
+- **Do** paint Ask and pressed mode chips zinc-white; draw the citation as a proof-blue bbox on the page PNG.
+- **Do** refuse with an abstain banner, omit the answer block, and keep unverified citations visible for the trail.
+- **Do** split panes with 1px zinc hairlines and 6px / 4px corners.
 
 ### Don't:
 - **Don't** lay out chat, PDF, and sources as three equal cards.
-- **Don't** use Azeret Mono for the wordmark, mode keys, TRACE headings, or LOAD FRAME.
-- **Don't** introduce a green success token, a pill chip, or a glyph icon for verified / mode / strict.
-- **Don't** lift catalog or TRACE as drop-shadowed cards, or round them past 3px.
-- **Don't** write a fluent answer into the gate, or keep an answer well, when the system abstains.
-- **Don't** spend cadmium on chrome, charts, or decorative rules; it is the finder.
+- **Don't** revive enamel, sprockets, putty plates, cadmium reticles, Barlow, or a NO FRAME stamp.
+- **Don't** paint Ask, panel heads, or pane fills in proof blue; blue is the finder.
+- **Don't** introduce a green success token or a pill chip for verified / mode / strict.
+- **Don't** lift Ask, Trace, or the top bar with drop shadows, or round chrome past 6px.
+- **Don't** write a fluent answer into the canvas, or keep an answer block, when the system abstains.

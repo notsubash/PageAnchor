@@ -4,6 +4,8 @@
 
 Text-only RAG is fluent and uncheckable on layout-heavy PDFs. PageAnchor retrieves pages, picks layout regions, asks the generator for verbatim quotes, and keeps the answer only if each quote is a normalized substring of the cited region and the answer is a normalized substring of a cited quote. Web, CLI, MCP, and eval call the same `grounded_answer` function.
 
+![PageAnchor WebApp](docs/images/Pageanchor-webapp.png)
+
 ![Citation overlay on BLS CPI Table A](docs/images/citation-overlay.png)
 
 Code is Apache-2.0. Per-document licenses: [corpus/LICENSE.md](corpus/LICENSE.md). PDFs are not in git; SHA-256 in `corpus/manifest.json` is the source of truth.
@@ -73,7 +75,7 @@ CI runs pytest and ruff only. It does not download the corpus or GPU models.
 
 ```bash
 docker compose up api
-# or: uv run --extra api python -m uvicorn pageanchor.api.main:app --reload --port 8000
+# or: uv run --no-sync --extra api python -m uvicorn pageanchor.api.main:app --reload --port 8000
 ```
 
 ```bash
