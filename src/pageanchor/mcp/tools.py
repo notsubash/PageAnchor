@@ -8,10 +8,11 @@ from pydantic import Field
 from pageanchor.config import load_settings
 from pageanchor.corpus import find_region, load_regions
 from pageanchor.ground.answer import grounded_answer as run_grounded_answer
+from pageanchor.ground.receipt import build_receipt
 from pageanchor.ground.regions import select_regions
 from pageanchor.ground.verify import verify_quote as quote_in_region
 from pageanchor.ids import new_trace_id
-from pageanchor.models import GroundedAnswer, RetrievalMode
+from pageanchor.models import GroundedAnswer, OverlayMode, Receipt, RetrievalMode
 from pageanchor.retrieve.hybrid import search_hybrid
 from pageanchor.retrieve.text import search_text
 from pageanchor.retrieve.visual import search_visual
@@ -27,11 +28,13 @@ def register_tools(mcp: MCPServer) -> None:
     def search_documents(
         query: str,
         k: Annotated[int, Field(ge=1)] = 5,
-        mode: RetrievalMode = "hybrid",
+        mode: OverlayMode = "hybrid",
     ) -> dict[str, Any]:
-        hits = {"text": search_text, "visual": search_visual, "hybrid": search_hybrid}[mode](
-            query, k
-        )
+        hits = {
+            "text": search_text,
+            "visual": search_visual,
+            "hybrid": search_hybrid,
+        }[mode](query, k)
         return {"trace_id": new_trace_id(), "hits": [hit.model_dump() for hit in hits]}
 
     @mcp.tool(description="Load stored layout regions for a page. " + _FACT_RULE)
@@ -104,3 +107,9 @@ def register_tools(mcp: MCPServer) -> None:
         strict: bool = True,
     ) -> GroundedAnswer:
         return run_grounded_answer(question, mode, strict=strict)
+
+    @mcp.tool(
+        description="Export a citation receipt with PDF hashes. " + _FACT_RULE
+    )
+    def export_receipt(answer: GroundedAnswer) -> Receipt:
+        return build_receipt(answer)

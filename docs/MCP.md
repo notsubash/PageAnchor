@@ -73,6 +73,7 @@ Pages are 1-based.
 | `select_evidence`  | `select_regions`            |
 | `verify_quote`     | `verify_quote` on stored region text |
 | `grounded_answer`  | `grounded_answer`           |
+| `export_receipt`   | `build_receipt` from a `GroundedAnswer` |
 
 `grounded_answer` returns the same `GroundedAnswer` object as `pageanchor ask` and `POST /v1/answer`.
 
@@ -83,3 +84,4 @@ Pages are 1-based.
 3. Draft from region text only
 4. Nested verify per claim (quote in region, answer in quote)
 5. Optional `grounded_answer` for parity with the web UI
+6. Optional `export_receipt` for the PDF hashes behind the citations

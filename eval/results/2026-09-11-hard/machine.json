@@ -1,0 +1,5 @@
+{
+  "torch": "2.11.0+cu128",
+  "cuda": true,
+  "device": "NVIDIA GeForce RTX 4070 Ti SUPER"
+}

@@ -217,6 +217,28 @@ def test_answer_uses_mocked_grounded_answer(corpus: Path, monkeypatch: pytest.Mo
     _run(run())
 
 
+def test_receipt_copies_manifest_hash(corpus: Path):
+    fake = _sample_answer("token?")
+    fake = fake.model_copy(
+        update={
+            "answer": None,
+            "abstain": True,
+            "abstain_reason": "unsupported",
+        }
+    )
+
+    async def run():
+        async with await _client() as client:
+            response = await client.post("/v1/receipt", json=fake.model_dump(mode="json"))
+        assert response.status_code == 200
+        body = response.json()
+        assert body["documents"][0]["sha256"] == "abc"
+        assert body["abstain_reason"] == "unsupported"
+        assert body["trace_id"] == fake.trace.trace_id
+
+    _run(run())
+
+
 def test_cors_allows_localhost_3000(corpus: Path):
     async def run():
         async with await _client() as client:
@@ -228,6 +250,21 @@ def test_cors_allows_localhost_3000(corpus: Path):
             )
         assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"
         assert denied.headers.get("access-control-allow-origin") != "http://evil.example"
+
+    _run(run())
+
+
+def test_search_rejects_bm25(corpus: Path):
+    async def run():
+        async with await _client() as client:
+            response = await client.post(
+                "/v1/search", json={"query": "token", "k": 1, "mode": "bm25"}
+            )
+            answer = await client.post(
+                "/v1/answer", json={"question": "token", "mode": "bm25", "strict": True}
+            )
+        assert response.status_code == 422
+        assert answer.status_code == 422
 
     _run(run())
 

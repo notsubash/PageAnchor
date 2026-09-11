@@ -18,11 +18,12 @@ from pageanchor.corpus import (
     page_png_path,
 )
 from pageanchor.ground.answer import grounded_answer
+from pageanchor.ground.receipt import build_receipt
 from pageanchor.ground.regions import select_regions
 from pageanchor.ground.verify import verify_quote
 from pageanchor.ids import new_trace_id
 from pageanchor.ingest.index_text import table_names
-from pageanchor.models import RetrievalMode
+from pageanchor.models import GroundedAnswer, OverlayMode
 from pageanchor.retrieve.hybrid import search_hybrid
 from pageanchor.retrieve.text import search_text
 from pageanchor.retrieve.visual import search_visual
@@ -33,7 +34,7 @@ router = APIRouter()
 class SearchBody(BaseModel):
     query: str
     k: int = Field(default=5, ge=1)
-    mode: RetrievalMode = "hybrid"
+    mode: OverlayMode = "hybrid"
 
 
 class EvidenceBody(BaseModel):
@@ -52,7 +53,7 @@ class VerifyBody(BaseModel):
 
 class AnswerBody(BaseModel):
     question: str
-    mode: RetrievalMode = "hybrid"
+    mode: OverlayMode = "hybrid"
     strict: bool = True
 
 
@@ -94,7 +95,11 @@ def page_regions(
 
 @router.post("/v1/search")
 def search(body: SearchBody) -> dict:
-    modes = {"text": search_text, "visual": search_visual, "hybrid": search_hybrid}
+    modes = {
+        "text": search_text,
+        "visual": search_visual,
+        "hybrid": search_hybrid,
+    }
     hits = _retrieve(modes[body.mode], body.query, body.k)
     return _traced(hits=[hit.model_dump() for hit in hits])
 
@@ -134,6 +139,12 @@ def answer(body: AnswerBody) -> dict:
     payload = result.model_dump()
     payload["trace_id"] = result.trace.trace_id
     return payload
+
+
+@router.post("/v1/receipt")
+def receipt(body: GroundedAnswer, settings: Settings = Depends(get_settings)) -> dict:
+    rec = _http_call(build_receipt, body, corpus_root=settings.corpus_root)
+    return rec.model_dump()
 
 
 def _traced(**fields) -> dict:

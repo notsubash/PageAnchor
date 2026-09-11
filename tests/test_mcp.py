@@ -100,6 +100,7 @@ def test_tools_and_resources_are_listed(corpus: Path):
             "select_evidence",
             "verify_quote",
             "grounded_answer",
+            "export_receipt",
         }
         for tool in tools.tools:
             text = (tool.description or "").lower()
@@ -252,5 +253,40 @@ def test_grounded_answer_envelope_wraps_same_object(corpus: Path, monkeypatch: p
         body = _body(result)
         assert body["trace"]["trace_id"] == fake.trace.trace_id
         assert body["answer"] == "ViDoRe"
+
+    _run(run())
+
+
+def test_export_receipt_copies_manifest_hash(corpus: Path):
+    fake = GroundedAnswer(
+        question="token?",
+        answer=None,
+        abstain=True,
+        abstain_reason="unsupported",
+        citations=[
+            Citation(
+                doc_id="hello",
+                page=1,
+                region_id="hello:p1:r0",
+                bbox=(0.1, 0.1, 0.5, 0.2),
+                quote="Single-Task Training",
+                quote_in_region=True,
+                answer_in_quote=False,
+            )
+        ],
+        trace=Trace(trace_id=new_trace_id(), retrieval_mode="hybrid"),
+    )
+
+    async def run():
+        async with _client() as client:
+            result = await client.call_tool(
+                "export_receipt",
+                {"answer": fake.model_dump(mode="json")},
+            )
+        assert not result.is_error
+        body = _body(result)
+        assert body["documents"][0]["sha256"] == "abc"
+        assert body["abstain_reason"] == "unsupported"
+        assert body["trace_id"] == fake.trace.trace_id
 
     _run(run())

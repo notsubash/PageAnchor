@@ -10,7 +10,7 @@ from pageanchor.eval.report import render_report
 from pageanchor.ground.answer import apply_strict, grounded_answer
 from pageanchor.models import GroundedAnswer
 
-_RETRIEVE_MODES = {"text", "visual", "hybrid"}
+_RETRIEVE_MODES = {"text", "visual", "hybrid", "bm25"}
 
 
 def run_eval(gold_path: str, modes: list[str], out_dir: str) -> dict:

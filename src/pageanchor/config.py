@@ -30,6 +30,36 @@ def under_root(root: Path, *parts: str | Path) -> Path:
     return dest
 
 
+def torch_pair_hint(exc: BaseException, what: str) -> str:
+    torch_v = "missing"
+    torchvision_v = "missing"
+    try:
+        import torch
+
+        torch_v = torch.__version__
+    except Exception:
+        pass
+    try:
+        import importlib.metadata as metadata
+
+        torchvision_v = metadata.version("torchvision")
+    except Exception:
+        pass
+    parts: list[str] = []
+    seen: set[int] = set()
+    current: BaseException | None = exc
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        parts.append(str(current))
+        current = current.__cause__
+    return (
+        f"{what} (torch={torch_v}, torchvision={torchvision_v}): {' | '.join(parts)}. "
+        "Torch and torchvision must match. After the visual extra, overlay CUDA 12.8 "
+        "wheels with `uv pip install torch torchvision --index-url "
+        "https://download.pytorch.org/whl/cu128` and run the API with `uv run --no-sync`."
+    )
+
+
 def torch_device() -> str:
     """cuda if available, else cpu. PAGEANCHOR_DEVICE=cpu|cuda overrides."""
     import torch

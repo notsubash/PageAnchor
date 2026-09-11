@@ -97,3 +97,17 @@ def test_colqwen2_hint_names_torch_and_install():
     assert "torchvision=" in text
     assert "nms" in text
     assert "cu128" in text
+
+
+def test_colqwen2_hint_unwraps_pretrainedmodel_wrapper():
+    from pageanchor.retrieve.visual import _colqwen2_hint
+
+    inner = RuntimeError("operator torchvision::nms does not exist")
+    outer = ModuleNotFoundError(
+        "Could not import module 'PreTrainedModel'. "
+        "Are this object's requirements defined correctly?"
+    )
+    outer.__cause__ = inner
+    text = _colqwen2_hint(outer)
+    assert "PreTrainedModel" in text
+    assert "nms" in text

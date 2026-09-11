@@ -4,7 +4,8 @@ from pydantic import BaseModel, Field
 
 BBox = tuple[float, float, float, float]
 RegionType = Literal["text", "table", "figure", "title", "other"]
-RetrievalMode = Literal["text", "visual", "hybrid"]
+OverlayMode = Literal["text", "visual", "hybrid"]
+RetrievalMode = Literal["text", "visual", "hybrid", "bm25"]
 AbstainReason = Literal[
     "low_retrieval_score",
     "no_hits",
@@ -73,3 +74,23 @@ class GroundedAnswer(BaseModel):
     abstain_reason: AbstainReason | None = None
     citations: list[Citation]
     trace: Trace
+
+
+class ReceiptDocument(BaseModel):
+    id: str
+    sha256: str
+
+
+class Receipt(BaseModel):
+    question: str
+    answer: str | None
+    abstain: bool
+    abstain_reason: AbstainReason | None = None
+    citations: list[Citation]
+    verify: list[VerifyResult]
+    documents: list[ReceiptDocument]
+    ingest_version: str
+    layout_engine: str
+    retrieval_mode: RetrievalMode
+    trace_id: str
+    generator_model: str

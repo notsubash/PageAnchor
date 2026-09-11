@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 from collections.abc import Callable
 
@@ -21,6 +22,7 @@ from pageanchor.models import (
     VerifyResult,
 )
 from pageanchor.retrieve.hybrid import search_hybrid
+from pageanchor.retrieve.sparse import search_bm25
 from pageanchor.retrieve.text import search_text
 from pageanchor.retrieve.visual import search_visual
 
@@ -68,7 +70,12 @@ def grounded_answer(
     started = time.perf_counter()
     timings: dict[str, float] = {}
     trace_id = new_trace_id()
-    search_fn = {"text": search_text, "visual": search_visual, "hybrid": search_hybrid}.get(mode)
+    search_fn = {
+        "text": search_text,
+        "visual": search_visual,
+        "hybrid": search_hybrid,
+        "bm25": search_bm25,
+    }.get(mode)
     if search_fn is None:
         raise ValueError(f"retrieval mode {mode!r} is not implemented yet")
 
@@ -95,7 +102,9 @@ def grounded_answer(
 
     select_started = time.perf_counter()
     if regions is None:
-        regions = select_evidence(question, hits)
+        regions = select_evidence(
+            question, hits, visual=os.getenv("PAGEANCHOR_VISUAL_REGIONS") == "1"
+        )
     timings["select_ms"] = (time.perf_counter() - select_started) * 1000
 
     generate_started = time.perf_counter()

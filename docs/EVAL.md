@@ -55,6 +55,8 @@ Systems:
 
 Headline system is D. D abstains C's fluent misses: `verify_failed` or `unsupported`, citations kept. Verify pass can sit below 1.0 when a kept answer cites an extra quote that does not contain the span; that is not a wiring bug.
 
+`bm25` and `bm25+verify` are CLI eval retrieve modes (`--modes bm25,bm25+verify`). They are not overlay keys. Sparse text belongs in the ablation table, not as a fourth button.
+
 nDCG, table exact match, and cost are not scored.
 
 ## Committed run
@@ -124,8 +126,24 @@ If you tune later, record the value and the six question ids in this file. Do no
 
 `corpus/eval/hard_questions.jsonl` is 16 rows on top of the frozen 30. Types: `lexical_gap`, `table_cell`, `figure_only`, `layout`, `adversarial_unanswerable`. Report `region_hit`, `answer_match`, `quote_support_rate`, and `abstain_by_reason` from `score_run`. Do not mix those numbers into `eval/results/2026-09-10/`.
 
+Committed run: `eval/results/2026-09-11-hard/` (CUDA, `torch 2.11.0+cu128`, RTX 4070 Ti SUPER, `deepseek-v4-flash`).
+
+| system | recall@5 | citation page hit | verify pass | abstain P | abstain R | p50 ms |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| A text | 0.417 | 0.333 | 1.000 | 0.400 | 0.500 | 2043 |
+| B visual | 0.583 | 0.375 | 1.000 | 0.333 | 0.500 | 2315 |
+| C hybrid | 0.583 | 0.375 | 1.000 | 0.333 | 0.500 | 2416 |
+| D hybrid+verify | 0.583 | 0.375 | 1.000 | 0.333 | 0.500 | 2416 |
+
+| system | region hit | answer match | quote support |
+| --- | ---: | ---: | ---: |
+| A text | 0.417 | 0.667 | 1.000 |
+| B visual | 0.417 | 0.750 | 1.000 |
+| C hybrid | 0.417 | 0.750 | 1.000 |
+| D hybrid+verify | 0.417 | 0.750 | 1.000 |
+
 ```bash
-uv run pageanchor eval --gold corpus/eval/hard_questions.jsonl \
+uv run --no-sync pageanchor eval --gold corpus/eval/hard_questions.jsonl \
   --modes text,visual,hybrid,hybrid+verify \
   --out eval/results/$(date +%F)-hard
 ```

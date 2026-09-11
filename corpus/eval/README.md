@@ -22,7 +22,7 @@ After `frozen_at`, fix page numbers only. New questions need a freeze bump and a
 
 ## Hard set
 
-`corpus/eval/hard_questions.jsonl` is additive. The frozen 30 stay put. This file may move until a `hard_frozen_at` line is added here when eval numbers are committed.
+`corpus/eval/hard_questions.jsonl` is additive. The frozen 30 stay put. `hard_frozen_at=2026-09-11` against `eval/results/2026-09-11-hard/`.
 
 Sixteen rows:
 

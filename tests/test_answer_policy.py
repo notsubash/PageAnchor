@@ -30,6 +30,24 @@ def test_empty_hits_visual_and_hybrid_keep_mode():
         assert result.trace.retrieval_mode == mode
 
 
+def test_select_evidence_visual_flag_follows_env(monkeypatch):
+    seen: dict = {}
+
+    def fake_select(question, hits, **kwargs):
+        seen.clear()
+        seen.update(kwargs)
+        return []
+
+    monkeypatch.setattr("pageanchor.ground.answer.select_evidence", fake_select)
+    hits = [PageHit(doc_id="hello", page=1, score=1.0, source="text")]
+    monkeypatch.delenv("PAGEANCHOR_VISUAL_REGIONS", raising=False)
+    grounded_answer("q", "text", hits=hits, generate=lambda q, r: GeneratorOutput())
+    assert seen.get("visual") is False
+    monkeypatch.setenv("PAGEANCHOR_VISUAL_REGIONS", "1")
+    grounded_answer("q", "text", hits=hits, generate=lambda q, r: GeneratorOutput())
+    assert seen.get("visual") is True
+
+
 def test_bad_quote_abstains_when_strict():
     region = _region("THE_TOKEN_42 is on the page")
 

@@ -8,8 +8,8 @@ import {
   RetrievalMode,
   pagePngUrl,
   postAnswer,
+  postReceipt,
 } from "@/lib/api";
-import { Q011_EXHIBIT, SEEDS } from "@/lib/exhibits";
 
 const MODES: RetrievalMode[] = ["text", "visual", "hybrid"];
 
@@ -30,7 +30,6 @@ export default function Home() {
   const askGen = useRef(0);
 
   const shown = pair ? pair[view] : result;
-  const canned = shown?.trace_id === Q011_EXHIBIT.trace_id;
 
   async function ask(asked: string) {
     const gen = ++askGen.current;
@@ -81,25 +80,31 @@ export default function Home() {
     void ask(asked);
   }
 
-  function onSeed(seedQuestion: string) {
-    setQuestion(seedQuestion);
-    void ask(seedQuestion);
-  }
-
-  function onExhibit() {
-    askGen.current += 1;
-    setLoading(false);
-    setQuestion(Q011_EXHIBIT.question);
-    setError(null);
-    setPair(null);
-    setResult(Q011_EXHIBIT);
-    setSelected(Q011_EXHIBIT.citations[0] ?? null);
-  }
-
   function onCompareView(next: "text" | "hybrid") {
     setView(next);
     if (pair) {
       setSelected(pair[next].citations[0] ?? null);
+    }
+  }
+
+  async function onReceipt() {
+    if (!shown) {
+      return;
+    }
+    setError(null);
+    try {
+      const receipt = await postReceipt(shown);
+      const blob = new Blob([JSON.stringify(receipt, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `receipt-${receipt.trace_id}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     }
   }
 
@@ -168,21 +173,13 @@ export default function Home() {
               placeholder="Ask the frozen corpus"
               required
             />
-            <div className="modes" role="group" aria-label="Seed questions">
-              {SEEDS.map((seed) => (
-                <button
-                  key={seed.id}
-                  type="button"
-                  className="mode"
-                  disabled={loading}
-                  onClick={() => onSeed(seed.question)}
-                >
-                  {seed.label}
-                </button>
-              ))}
-            </div>
-            <button type="button" className="mode" onClick={onExhibit}>
-              Exhibit
+            <button
+              type="button"
+              className="mode"
+              disabled={!shown}
+              onClick={() => void onReceipt()}
+            >
+              Receipt
             </button>
             <button className="load" type="submit" disabled={loading} aria-busy={loading}>
               {loading ? "Advancing" : "Load frame"}
@@ -207,9 +204,6 @@ export default function Home() {
                 HYBRID
               </button>
             </div>
-          ) : null}
-          {canned ? (
-            <p className="banner">EXHIBIT (canned, not generated)</p>
           ) : null}
           {error ? <p className="banner fault">{error}</p> : null}
           {shown?.abstain ? <p className="banner abstain">{abstainBanner}</p> : null}

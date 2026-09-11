@@ -133,6 +133,24 @@ Same gold on CUDA (`eval/results/2026-09-10-gpu/`, `torch 2.11.0+cu128`, RTX 407
 
 Visual wins on the LayoutLMv3 teaser (**q017**): text cited page 2 with an unverified quote; visual and hybrid cited the page 1 figure, verified. Visual does not fix ColPali Table 2 (**q012**, gold page 7): it cites a later restatement. The Roman first-slide title (**q016**) is retrieved by no mode. Full write-up: [docs/EVAL.md](docs/EVAL.md).
 
+Hard set (`corpus/eval/hard_questions.jsonl`, 12 answerable + 4 adversarial unanswerable). Committed run `eval/results/2026-09-11-hard/`, CUDA, `torch 2.11.0+cu128`, RTX 4070 Ti SUPER, `deepseek-v4-flash`. Not mixed into the frozen-30 folders.
+
+| system | recall@5 | citation page hit | verify pass | abstain P | abstain R | p50 ms |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| A text | 0.417 | 0.333 | 1.000 | 0.400 | 0.500 | 2043 |
+| B visual | 0.583 | 0.375 | 1.000 | 0.333 | 0.500 | 2315 |
+| C hybrid | 0.583 | 0.375 | 1.000 | 0.333 | 0.500 | 2416 |
+| D hybrid+verify | 0.583 | 0.375 | 1.000 | 0.333 | 0.500 | 2416 |
+
+| system | region hit | answer match | quote support |
+| --- | ---: | ---: | ---: |
+| A text | 0.417 | 0.667 | 1.000 |
+| B visual | 0.417 | 0.750 | 1.000 |
+| C hybrid | 0.417 | 0.750 | 1.000 |
+| D hybrid+verify | 0.417 | 0.750 | 1.000 |
+
+Visual lifts Recall@5 from 5/12 to 7/12. Region hit stays 5/12: the gold span often never reaches the generator. Kept answers are extractive (`quote support` 1.0). Abstain recall is 2/4 on the adversarial rows. Wrong-page cites (h001 PaliGemma restatement, h007 nDCG@5 on page 21) are in `eval/results/2026-09-11-hard/report.md`.
+
 ```bash
 uv sync --extra dev --extra visual
 uv run pageanchor eval --gold corpus/eval/gold_questions.jsonl \

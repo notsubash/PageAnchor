@@ -109,6 +109,10 @@ def select_evidence(
     corpus_root: Path | None = None,
     embed_query: EmbedFn | None = None,
     embed_passages: EmbedFn | None = None,
+    visual: bool = False,
+    embed_crops: Callable[..., list[list[list[float]]]] | None = None,
+    embed_visual_query: Callable[[str], list[list[float]]] | None = None,
+    open_page: Callable[[str, int], Path] | None = None,
 ) -> list[ScoredRegion]:
     pool: list[ScoredRegion] = []
     seen: set[tuple[str, int]] = set()
@@ -129,6 +133,20 @@ def select_evidence(
     ranked = dense_rerank(
         question, pool, embed_query=embed_query, embed_passages=embed_passages
     )
+    if visual:
+        from pageanchor.ground.visual_regions import blend_scores, score_region_crops
+
+        ranked = blend_scores(
+            ranked,
+            score_region_crops(
+                question,
+                ranked,
+                embed_query=embed_visual_query,
+                embed_crops=embed_crops,
+                open_page=open_page,
+                corpus_root=corpus_root,
+            ),
+        )
     counts: dict[tuple[str, int], int] = {}
     picked: list[ScoredRegion] = []
     for region in ranked:
