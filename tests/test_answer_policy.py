@@ -1,6 +1,6 @@
 from pageanchor.ground.answer import GeneratorCitation, GeneratorOutput, grounded_answer
 from pageanchor.ids import region_id
-from pageanchor.models import PageHit, ScoredRegion
+from pageanchor.models import PageHit, Region, ScoredRegion
 from pageanchor.retrieve.rerank import POOL_K
 
 
@@ -422,3 +422,58 @@ def test_apply_strict_keeps_answer_if_any_quote_contains_it():
     strict = apply_strict(answer)
     assert strict.abstain is False
     assert strict.answer == "8.5k"
+
+
+def test_canonical_moves_restatement_cite_to_earlier_retrieved_page(monkeypatch):
+    restatement = ScoredRegion(
+        doc_id="hello",
+        page=21,
+        region_id=region_id("hello", 21, 0),
+        type="text",
+        bbox=(0.2, 0.2, 0.7, 0.3),
+        text="Later restatement of nDCG@5.",
+        score=1.0,
+    )
+    table = Region(
+        doc_id="hello",
+        page=7,
+        region_id=region_id("hello", 7, 0),
+        type="text",
+        bbox=(0.1, 0.1, 0.9, 0.5),
+        text="Table 2. Results are presented using nDCG@5 metrics",
+    )
+
+    def fake_load_regions(root, doc_id: str, page: int | None = None):
+        if doc_id == "hello" and page == 7:
+            return [table]
+        raise FileNotFoundError("regions missing")
+
+    monkeypatch.setattr("pageanchor.ground.answer.load_regions", fake_load_regions)
+
+    def fake_generate(question, regions):
+        return GeneratorOutput(
+            answer="nDCG@5",
+            citations=[
+                GeneratorCitation(region_id=restatement.region_id, quote="nDCG@5")
+            ],
+        )
+
+    result = grounded_answer(
+        "What metric does Table 2 use to report the results?",
+        "text",
+        hits=[
+            PageHit(doc_id="hello", page=21, score=1.0, source="text"),
+            PageHit(doc_id="hello", page=7, score=0.4, source="text"),
+        ],
+        regions=[restatement],
+        generate=fake_generate,
+    )
+    assert result.abstain is False
+    assert result.answer == "nDCG@5"
+    assert result.citations[0].page == 7
+    assert result.citations[0].region_id == table.region_id
+    assert result.citations[0].bbox == table.bbox
+    assert result.citations[0].verified is True
+    assert [region.region_id for region in result.trace.regions] == [
+        restatement.region_id
+    ]
