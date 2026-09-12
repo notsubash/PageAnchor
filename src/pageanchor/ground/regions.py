@@ -118,13 +118,11 @@ def select_evidence(
     root = Path(corpus_root or load_settings().corpus_root)
     pool: list[ScoredRegion] = []
     seen: set[tuple[str, int]] = set()
-    page_order: list[tuple[str, int]] = []
     for hit in hits:
         key = (hit.doc_id, hit.page)
         if key in seen:
             continue
         seen.add(key)
-        page_order.append(key)
         by_id = {
             region.region_id: region
             for region in select_regions(
@@ -161,16 +159,15 @@ def select_evidence(
     counts: dict[tuple[str, int], int] = {}
     picked: list[ScoredRegion] = []
     picked_ids: set[str] = set()
-    for key in page_order:
+    for region in ranked:
         if len(picked) >= max_regions:
             break
-        for region in ranked:
-            if (region.doc_id, region.page) != key or region.region_id in picked_ids:
-                continue
-            picked.append(region)
-            picked_ids.add(region.region_id)
-            counts[key] = 1
-            break
+        key = (region.doc_id, region.page)
+        if key in counts:
+            continue
+        picked.append(region)
+        picked_ids.add(region.region_id)
+        counts[key] = 1
     for region in ranked:
         if len(picked) >= max_regions:
             break

@@ -274,3 +274,53 @@ def test_select_evidence_two_pass_covers_each_hit_page(tmp_path, monkeypatch):
     )
     assert {region.page for region in picked} == {1, 2, 3}
     assert {region.page for region in picked[:3]} == {1, 2, 3}
+
+
+def test_select_evidence_first_pass_follows_reranked_page_order(tmp_path, monkeypatch):
+    monkeypatch.setenv("PAGEANCHOR_CORPUS_ROOT", str(tmp_path))
+    gold_id = "d:p6:r_table"
+    rows = []
+    for page in range(1, 7):
+        rows.append(
+            Region(
+                doc_id="d",
+                page=page,
+                region_id=f"d:p{page}:r0",
+                type="text",
+                bbox=(0.0, 0.0, 1.0, 0.2),
+                text=f"GLUE heading page {page} CoLA",
+            ).model_dump()
+        )
+    rows.append(
+        Region(
+            doc_id="d",
+            page=6,
+            region_id=gold_id,
+            type="text",
+            bbox=(0.0, 0.2, 1.0, 0.9),
+            text="MNLI QQP QNLI SST-2 CoLA 8.5k STS-B MRPC RTE WNLI " * 20,
+        ).model_dump()
+    )
+    out = tmp_path / "regions"
+    out.mkdir()
+    (out / "d.json").write_text(json.dumps(rows), encoding="utf-8")
+
+    def embed_query(texts: list[str]) -> list[list[float]]:
+        return [[1.0, 0.0] for _ in texts]
+
+    def embed_passages(texts: list[str]) -> list[list[float]]:
+        return [[100.0, 0.0] if "CoLA 8.5k" in text else [1.0, 0.0] for text in texts]
+
+    picked = select_evidence(
+        "How many CoLA training examples?",
+        [
+            PageHit(doc_id="d", page=page, score=1.0 - 0.01 * page, source="hybrid")
+            for page in range(1, 7)
+        ],
+        max_regions=5,
+        per_page=2,
+        embed_query=embed_query,
+        embed_passages=embed_passages,
+        corpus_root=tmp_path,
+    )
+    assert gold_id in {region.region_id for region in picked}
