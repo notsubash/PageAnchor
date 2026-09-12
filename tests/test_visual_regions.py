@@ -104,3 +104,53 @@ def test_select_evidence_visual_blends_injected_scores(tmp_path, monkeypatch):
         corpus_root=tmp_path,
     )
     assert picked[0].region_id == "d:p1:r1"
+
+
+def test_select_evidence_crop_shortlist_caps_embed_crops(tmp_path, monkeypatch):
+    from pageanchor.ground.regions import select_evidence
+
+    monkeypatch.setenv("PAGEANCHOR_CORPUS_ROOT", str(tmp_path))
+    rows = []
+    for page in (1, 2):
+        for index in range(20):
+            rows.append(
+                Region(
+                    doc_id="d",
+                    page=page,
+                    region_id=f"d:p{page}:r{index}",
+                    type="text",
+                    bbox=(0.0, 0.0, 1.0, 0.1),
+                    text=f"evidence token{index} page{page}",
+                ).model_dump()
+            )
+    out = tmp_path / "regions"
+    out.mkdir()
+    (out / "d.json").write_text(json.dumps(rows), encoding="utf-8")
+
+    seen: list[int] = []
+
+    def embed_text(texts: list[str]) -> list[list[float]]:
+        return [[1.0, 0.0] for _ in texts]
+
+    def embed_visual_query(query: str):
+        return [[1.0, 0.0]]
+
+    def embed_crops(regions):
+        seen.append(len(regions))
+        return [[[1.0, 0.0]] for _ in regions]
+
+    select_evidence(
+        "evidence",
+        [
+            PageHit(doc_id="d", page=1, score=1.0, source="hybrid"),
+            PageHit(doc_id="d", page=2, score=0.9, source="hybrid"),
+        ],
+        visual=True,
+        embed_query=embed_text,
+        embed_passages=embed_text,
+        embed_visual_query=embed_visual_query,
+        embed_crops=embed_crops,
+        corpus_root=tmp_path,
+    )
+    assert seen
+    assert seen[0] <= 24

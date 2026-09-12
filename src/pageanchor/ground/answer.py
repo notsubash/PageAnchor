@@ -4,10 +4,13 @@ import json
 import os
 import time
 from collections.abc import Callable
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 from pageanchor.config import generator_client, load_settings
+from pageanchor.corpus import load_regions
+from pageanchor.ground.canonical import apply_canonical
 from pageanchor.ground.regions import select_evidence
 from pageanchor.ground.verify import answer_in_quote, verify_quote
 from pageanchor.ids import new_trace_id
@@ -22,6 +25,7 @@ from pageanchor.models import (
     VerifyResult,
 )
 from pageanchor.retrieve.hybrid import search_hybrid
+from pageanchor.retrieve.rerank import POOL_K, expand_same_doc, rerank_pages
 from pageanchor.retrieve.sparse import search_bm25
 from pageanchor.retrieve.text import search_text
 from pageanchor.retrieve.visual import search_visual
@@ -81,7 +85,9 @@ def grounded_answer(
 
     search_started = time.perf_counter()
     if hits is None:
-        hits = search_fn(question, k)
+        retrieved = search_fn(question, POOL_K)
+        expanded = expand_same_doc(retrieved)
+        hits = rerank_pages(question, expanded, page_text=_page_text_for_hits(expanded))
     timings["search_ms"] = (time.perf_counter() - search_started) * 1000
 
     if not hits:
@@ -102,9 +108,8 @@ def grounded_answer(
 
     select_started = time.perf_counter()
     if regions is None:
-        regions = select_evidence(
-            question, hits, visual=os.getenv("PAGEANCHOR_VISUAL_REGIONS") == "1"
-        )
+        visual = mode in {"visual", "hybrid"} and os.getenv("PAGEANCHOR_VISUAL_REGIONS", "1") != "0"
+        regions = select_evidence(question, hits, visual=visual)
     timings["select_ms"] = (time.perf_counter() - select_started) * 1000
 
     generate_started = time.perf_counter()
@@ -125,6 +130,34 @@ def grounded_answer(
         timings,
         started,
     )
+
+
+def _canonical_candidates(
+    hits: list[PageHit], regions: list[ScoredRegion]
+) -> list[ScoredRegion]:
+    by_id = {region.region_id: region for region in regions}
+    root = load_settings().corpus_root
+    for doc_id, page in {(hit.doc_id, hit.page) for hit in hits}:
+        try:
+            loaded = load_regions(root, doc_id, page)
+        except (FileNotFoundError, ValueError):
+            continue
+        for region in loaded:
+            if region.region_id not in by_id:
+                by_id[region.region_id] = ScoredRegion(**region.model_dump(), score=0.0)
+    return list(by_id.values()) or list(regions)
+
+
+def _page_text_for_hits(hits: list[PageHit]) -> dict[tuple[str, int], str]:
+    root = load_settings().corpus_root
+    page_text: dict[tuple[str, int], str] = {}
+    for doc_id, page in {(hit.doc_id, hit.page) for hit in hits}:
+        try:
+            regions = load_regions(root, doc_id, page)
+        except (FileNotFoundError, ValueError):
+            continue
+        page_text[(doc_id, page)] = " ".join(region.text for region in regions)
+    return page_text
 
 
 def apply_strict(answer: GroundedAnswer) -> GroundedAnswer:
@@ -189,22 +222,13 @@ def _apply_policy(
                 )
             )
 
-    abstain = False
-    reason: AbstainReason | None = None
-    answer_text = generated.answer if generated is not None else None
-    if unknown:
-        abstain, reason, answer_text = True, "generator_invalid", None
-    elif citations and strict and any(not citation.quote_in_region for citation in citations):
-        abstain, reason, answer_text = True, "verify_failed", None
-    elif citations and strict and not any(citation.answer_in_quote for citation in citations):
-        abstain, reason, answer_text = True, "unsupported", None
-    elif generated.abstain:
-        abstain, reason, answer_text = True, "unanswerable", None
-    elif not citations or generated.answer is None:
-        abstain, reason, answer_text = True, "generator_invalid", None
+    invalid = generated is None or unknown
+    answer_text = None if invalid else generated.answer
+    abstain = invalid
+    reason: AbstainReason | None = "generator_invalid" if invalid else None
 
     timings["total_ms"] = (time.perf_counter() - started) * 1000
-    return GroundedAnswer(
+    result = GroundedAnswer(
         question=question,
         answer=answer_text,
         abstain=abstain,
@@ -219,6 +243,24 @@ def _apply_policy(
             timings_ms=timings,
         ),
     )
+    if citations and not invalid:
+        result = apply_canonical(result, _canonical_candidates(hits, regions))
+    if strict and result.citations:
+        result = apply_strict(result)
+    if not result.abstain:
+        if generated is not None and generated.abstain:
+            return result.model_copy(
+                update={"abstain": True, "abstain_reason": "unanswerable", "answer": None}
+            )
+        if not citations or generated is None or generated.answer is None:
+            return result.model_copy(
+                update={
+                    "abstain": True,
+                    "abstain_reason": "generator_invalid",
+                    "answer": None,
+                }
+            )
+    return result
 
 
 def _generate_deepseek(question: str, regions: list[ScoredRegion]) -> GeneratorOutput:
@@ -238,7 +280,7 @@ def _generate_deepseek(question: str, regions: list[ScoredRegion]) -> GeneratorO
             for region in regions
         ],
     }
-    messages = [
+    messages: Any = [
         {"role": "system", "content": _SYSTEM},
         {"role": "user", "content": json.dumps(payload)},
     ]

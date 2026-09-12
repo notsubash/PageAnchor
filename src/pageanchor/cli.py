@@ -22,6 +22,11 @@ def main(argv: list[str] | None = None) -> int:
     eval_parser.add_argument("--gold", default="corpus/eval/gold_questions.jsonl")
     eval_parser.add_argument("--modes", default="text,visual,hybrid,hybrid+verify")
     eval_parser.add_argument("--out", required=True)
+    eval_parser.add_argument(
+        "--retrieve-only",
+        action="store_true",
+        help="rank gold pages in top-20 retrieve hits; skip the generator",
+    )
 
     args = parser.parse_args(argv)
     if args.cmd == "ingest":
@@ -47,9 +52,15 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         return 0
     if args.cmd == "eval":
-        from pageanchor.eval.run import run_eval
-
         try:
+            if args.retrieve_only:
+                from pageanchor.eval.retrieve import run_retrieve_eval
+
+                payload = run_retrieve_eval(args.gold, args.out)
+                print(json.dumps(payload["recall"], indent=2))
+                return 0
+            from pageanchor.eval.run import run_eval
+
             results = run_eval(args.gold, args.modes.split(","), args.out)
         except FileNotFoundError as exc:
             print(exc, file=sys.stderr)

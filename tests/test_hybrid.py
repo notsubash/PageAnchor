@@ -1,5 +1,24 @@
+from pageanchor.eval.retrieve import gold_rank
 from pageanchor.models import PageHit
-from pageanchor.retrieve.hybrid import rrf_fuse, search_hybrid
+from pageanchor.retrieve.hybrid import rrf_fuse, rrf_fuse_many, search_hybrid
+
+COLPALI = "arxiv-2407-colpali"
+
+DENSE_MISS_TEXT = [
+    PageHit(doc_id="other-a", page=1, score=0.9, source="text"),
+    PageHit(doc_id="other-a", page=2, score=0.8, source="text"),
+    PageHit(doc_id=COLPALI, page=21, score=0.7, source="text"),
+]
+DENSE_MISS_VISUAL = [
+    PageHit(doc_id="other-b", page=4, score=0.9, source="visual"),
+    PageHit(doc_id="other-b", page=5, score=0.8, source="visual"),
+    PageHit(doc_id=COLPALI, page=6, score=0.7, source="visual"),
+]
+BM25_GOLD_FIRST = [
+    PageHit(doc_id=COLPALI, page=3, score=12.0, source="bm25"),
+    PageHit(doc_id="other-c", page=9, score=2.0, source="bm25"),
+    PageHit(doc_id="other-c", page=10, score=1.0, source="bm25"),
+]
 
 
 def test_rrf_prefers_pages_in_both_lists():
@@ -38,6 +57,13 @@ def test_rrf_respects_k():
     assert len(fused) == 2
 
 
+def test_rrf_fuse_many_three_way_recovers_bm25_gold():
+    two = rrf_fuse_many([DENSE_MISS_TEXT, DENSE_MISS_VISUAL], k=5)
+    three = rrf_fuse_many([DENSE_MISS_TEXT, DENSE_MISS_VISUAL, BM25_GOLD_FIRST], k=5)
+    assert gold_rank(two, COLPALI, [3]) is None
+    assert gold_rank(three, COLPALI, [3]) is not None
+
+
 def test_search_hybrid_rrf_prefers_overlap(monkeypatch):
     def fake_text(query, k, **kwargs):
         return [
@@ -51,8 +77,29 @@ def test_search_hybrid_rrf_prefers_overlap(monkeypatch):
             PageHit(doc_id="a", page=3, score=0.6, source="visual"),
         ]
 
+    def fake_bm25(query, k, **kwargs):
+        return []
+
     monkeypatch.setattr("pageanchor.retrieve.hybrid.search_text", fake_text)
     monkeypatch.setattr("pageanchor.retrieve.hybrid.search_visual", fake_visual)
+    monkeypatch.setattr("pageanchor.retrieve.hybrid.search_bm25", fake_bm25)
     fused = search_hybrid("q", k=5)
     assert fused[0].doc_id == "a" and fused[0].page == 2
     assert fused[0].source == "hybrid"
+
+
+def test_search_hybrid_three_way_recovers_bm25_gold(monkeypatch):
+    def fake_text(query, k, **kwargs):
+        return DENSE_MISS_TEXT[:k]
+
+    def fake_visual(query, k, **kwargs):
+        return DENSE_MISS_VISUAL[:k]
+
+    def fake_bm25(query, k, **kwargs):
+        return BM25_GOLD_FIRST[:k]
+
+    monkeypatch.setattr("pageanchor.retrieve.hybrid.search_text", fake_text)
+    monkeypatch.setattr("pageanchor.retrieve.hybrid.search_visual", fake_visual)
+    monkeypatch.setattr("pageanchor.retrieve.hybrid.search_bm25", fake_bm25)
+    fused = search_hybrid("q", k=5)
+    assert gold_rank(fused, COLPALI, [3]) is not None
