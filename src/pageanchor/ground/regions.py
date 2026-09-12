@@ -49,6 +49,7 @@ _STOPWORDS = frozenset(
 )
 
 EmbedFn = Callable[[list[str]], list[list[float]]]
+CROP_SHORTLIST = 24
 
 
 def select_regions(
@@ -114,22 +115,32 @@ def select_evidence(
     embed_visual_query: Callable[[str], list[list[float]]] | None = None,
     open_page: Callable[[str, int], Path] | None = None,
 ) -> list[ScoredRegion]:
+    root = Path(corpus_root or load_settings().corpus_root)
     pool: list[ScoredRegion] = []
     seen: set[tuple[str, int]] = set()
+    page_order: list[tuple[str, int]] = []
     for hit in hits:
         key = (hit.doc_id, hit.page)
         if key in seen:
             continue
         seen.add(key)
-        pool.extend(
-            select_regions(
+        page_order.append(key)
+        by_id = {
+            region.region_id: region
+            for region in select_regions(
                 question,
                 hit.doc_id,
                 hit.page,
                 max_regions=pool_per_page,
                 corpus_root=corpus_root,
             )
-        )
+        }
+        page_regions = load_regions(root, hit.doc_id, hit.page)
+        if page_regions:
+            longest = max(page_regions, key=lambda region: len(region.text))
+            if longest.region_id not in by_id:
+                by_id[longest.region_id] = ScoredRegion(**longest.model_dump(), score=0.0)
+        pool.extend(by_id.values())
     ranked = dense_rerank(
         question, pool, embed_query=embed_query, embed_passages=embed_passages
     )
@@ -140,7 +151,7 @@ def select_evidence(
             ranked,
             score_region_crops(
                 question,
-                ranked,
+                ranked[:CROP_SHORTLIST],
                 embed_query=embed_visual_query,
                 embed_crops=embed_crops,
                 open_page=open_page,
@@ -149,14 +160,28 @@ def select_evidence(
         )
     counts: dict[tuple[str, int], int] = {}
     picked: list[ScoredRegion] = []
+    picked_ids: set[str] = set()
+    for key in page_order:
+        if len(picked) >= max_regions:
+            break
+        for region in ranked:
+            if (region.doc_id, region.page) != key or region.region_id in picked_ids:
+                continue
+            picked.append(region)
+            picked_ids.add(region.region_id)
+            counts[key] = 1
+            break
     for region in ranked:
+        if len(picked) >= max_regions:
+            break
+        if region.region_id in picked_ids:
+            continue
         key = (region.doc_id, region.page)
         if counts.get(key, 0) >= per_page:
             continue
         counts[key] = counts.get(key, 0) + 1
         picked.append(region)
-        if len(picked) >= max_regions:
-            break
+        picked_ids.add(region.region_id)
     return picked
 
 

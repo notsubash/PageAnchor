@@ -107,9 +107,8 @@ def grounded_answer(
 
     select_started = time.perf_counter()
     if regions is None:
-        regions = select_evidence(
-            question, hits, visual=os.getenv("PAGEANCHOR_VISUAL_REGIONS") == "1"
-        )
+        visual = mode in {"visual", "hybrid"} and os.getenv("PAGEANCHOR_VISUAL_REGIONS", "1") != "0"
+        regions = select_evidence(question, hits, visual=visual)
     timings["select_ms"] = (time.perf_counter() - select_started) * 1000
 
     generate_started = time.perf_counter()

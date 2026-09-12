@@ -42,10 +42,18 @@ def test_select_evidence_visual_flag_follows_env(monkeypatch):
     monkeypatch.setattr("pageanchor.ground.answer.select_evidence", fake_select)
     hits = [PageHit(doc_id="hello", page=1, score=1.0, source="text")]
     monkeypatch.delenv("PAGEANCHOR_VISUAL_REGIONS", raising=False)
+    grounded_answer("q", "hybrid", hits=hits, generate=lambda q, r: GeneratorOutput())
+    assert seen.get("visual") is True
     grounded_answer("q", "text", hits=hits, generate=lambda q, r: GeneratorOutput())
     assert seen.get("visual") is False
     monkeypatch.setenv("PAGEANCHOR_VISUAL_REGIONS", "1")
     grounded_answer("q", "text", hits=hits, generate=lambda q, r: GeneratorOutput())
+    assert seen.get("visual") is False
+    monkeypatch.setenv("PAGEANCHOR_VISUAL_REGIONS", "0")
+    grounded_answer("q", "hybrid", hits=hits, generate=lambda q, r: GeneratorOutput())
+    assert seen.get("visual") is False
+    monkeypatch.delenv("PAGEANCHOR_VISUAL_REGIONS", raising=False)
+    grounded_answer("q", "visual", hits=hits, generate=lambda q, r: GeneratorOutput())
     assert seen.get("visual") is True
 
 
