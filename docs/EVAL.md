@@ -126,7 +126,7 @@ If you tune later, record the value and the six question ids in this file. Do no
 
 `corpus/eval/hard_questions.jsonl` is 16 rows on top of the frozen 30. Types: `lexical_gap`, `table_cell`, `figure_only`, `layout`, `adversarial_unanswerable`. Report `region_hit`, `answer_match`, `quote_support_rate`, and `abstain_by_reason` from `score_run`. Do not mix those numbers into `eval/results/2026-09-10/`.
 
-Committed run: `eval/results/2026-09-11-hard/` (CUDA, `torch 2.11.0+cu128`, RTX 4070 Ti SUPER, `deepseek-v4-flash`).
+Previous baseline: `eval/results/2026-09-11-hard/` (CUDA, `torch 2.11.0+cu128`, RTX 4070 Ti SUPER, `deepseek-v4-flash`).
 
 | system | recall@5 | citation page hit | verify pass | abstain P | abstain R | p50 ms |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -141,6 +141,28 @@ Committed run: `eval/results/2026-09-11-hard/` (CUDA, `torch 2.11.0+cu128`, RTX 
 | B visual | 0.417 | 0.750 | 1.000 |
 | C hybrid | 0.417 | 0.750 | 1.000 |
 | D hybrid+verify | 0.417 | 0.750 | 1.000 |
+
+Committed run after original-evidence (Phases 1–3): `eval/results/2026-09-12-hard/`. Plan: [2026-09-12-original-evidence.md](superpowers/plans/2026-09-12-original-evidence.md). `machine.json`: `torch 2.11.0+cu128`, RTX 4070 Ti SUPER, `deepseek-v4-flash`. Tables from that folder's `report.md`:
+
+| system | recall@5 | citation page hit | verify pass | abstain P | abstain R | p50 ms |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| A text | 0.667 | 0.444 | 1.000 | 0.500 | 1.000 | 3109 |
+| B visual | 0.833 | 0.500 | 1.000 | 0.444 | 1.000 | 5850 |
+| C hybrid | 0.917 | 0.500 | 1.000 | 0.444 | 1.000 | 5782 |
+| D hybrid+verify | 0.917 | 0.500 | 1.000 | 0.444 | 1.000 | 5782 |
+
+| system | region hit | answer match | quote support |
+| --- | ---: | ---: | ---: |
+| A text | 0.417 | 0.625 | 1.000 |
+| B visual | 0.500 | 0.714 | 1.000 |
+| C hybrid | 0.500 | 0.714 | 1.000 |
+| D hybrid+verify | 0.500 | 0.714 | 1.000 |
+
+Hard D vs the 2026-09-11 baseline: Recall@5 0.583 → 0.917 (11/12), region hit 0.417 → 0.500, citation page hit 0.375 → 0.500, abstain recall 0.50 → 1.000 (4/4), verify pass 1.000. Pass bar: Recall@5, abstain recall, and verify pass hold. Region hit (0.500 < 0.67) and citation page hit (0.500 < 0.67) miss.
+
+Remaining: **h008** (first Roman slide) is in `hits[:5]` but the generator abstains `unanswerable` with no citations. **h001** still cites the ColPali p.6 restatement (gold p.3). Hybrid citation misses also include h003, h004, h006. **h007** now cites gold p.7. Do not add a third retrieve model.
+
+Frozen D from the same HEAD: `eval/results/2026-09-12-gpu/` (`hybrid+verify`). Recall@5 0.917 (22/24) ≥ 0.833. Abstain recall on the six unanswerables stays 1.0. Citation page hit 0.684 vs `2026-09-10-gpu` hybrid 0.846 (more than one extra miss). **q016** still misses as an answer: Roman page 1 is in `hits[:5]`, generator abstains. **q011** still abstains on the GLUE CoLA table. q012 now cites ColPali p.7.
 
 ```bash
 uv run --no-sync pageanchor eval --gold corpus/eval/hard_questions.jsonl \
