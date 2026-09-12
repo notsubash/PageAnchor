@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 
 from pageanchor.ground.verify import answer_in_quote, verify_quote
-from pageanchor.models import Citation, GroundedAnswer, PageHit, ScoredRegion
+from pageanchor.models import Citation, GroundedAnswer, PageHit, ScoredRegion, VerifyResult
 from pageanchor.retrieve.rerank import cue_boost
 
 _YEAR_RE = re.compile(r"\b(\d{4})\b")
@@ -130,7 +130,25 @@ def apply_canonical(
             )
         )
 
-    result = answer.model_copy(update={"citations": rewritten})
+    verify_rows = [
+        VerifyResult(
+            ok=citation.verified,
+            quote=citation.quote,
+            matched_text=citation.quote if citation.quote_in_region else None,
+            doc_id=citation.doc_id,
+            page=citation.page,
+            region_id=citation.region_id or "",
+            quote_in_region=citation.quote_in_region,
+            answer_in_quote=citation.answer_in_quote,
+        )
+        for citation in rewritten
+    ]
+    result = answer.model_copy(
+        update={
+            "citations": rewritten,
+            "trace": answer.trace.model_copy(update={"verify": verify_rows}),
+        }
+    )
     if question_constraints(answer.question) is None or not rewritten:
         return result
 

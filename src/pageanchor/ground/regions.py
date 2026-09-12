@@ -159,15 +159,19 @@ def select_evidence(
     counts: dict[tuple[str, int], int] = {}
     picked: list[ScoredRegion] = []
     picked_ids: set[str] = set()
-    for region in ranked:
+    for hit in hits:
         if len(picked) >= max_regions:
             break
-        key = (region.doc_id, region.page)
+        key = (hit.doc_id, hit.page)
         if key in counts:
             continue
-        picked.append(region)
-        picked_ids.add(region.region_id)
-        counts[key] = 1
+        for region in ranked:
+            if (region.doc_id, region.page) != key or region.region_id in picked_ids:
+                continue
+            picked.append(region)
+            picked_ids.add(region.region_id)
+            counts[key] = 1
+            break
     for region in ranked:
         if len(picked) >= max_regions:
             break

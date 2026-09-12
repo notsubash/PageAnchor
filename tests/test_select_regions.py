@@ -278,9 +278,9 @@ def test_select_evidence_two_pass_covers_each_hit_page(tmp_path, monkeypatch):
 
 def test_select_evidence_first_pass_follows_reranked_page_order(tmp_path, monkeypatch):
     monkeypatch.setenv("PAGEANCHOR_CORPUS_ROOT", str(tmp_path))
-    gold_id = "d:p6:r_table"
+    gold_id = "d:p3:r_table"
     rows = []
-    for page in range(1, 7):
+    for page in (1, 2, 4, 5, 6):
         rows.append(
             Region(
                 doc_id="d",
@@ -294,7 +294,7 @@ def test_select_evidence_first_pass_follows_reranked_page_order(tmp_path, monkey
     rows.append(
         Region(
             doc_id="d",
-            page=6,
+            page=3,
             region_id=gold_id,
             type="text",
             bbox=(0.0, 0.2, 1.0, 0.9),
@@ -309,7 +309,7 @@ def test_select_evidence_first_pass_follows_reranked_page_order(tmp_path, monkey
         return [[1.0, 0.0] for _ in texts]
 
     def embed_passages(texts: list[str]) -> list[list[float]]:
-        return [[100.0, 0.0] if "CoLA 8.5k" in text else [1.0, 0.0] for text in texts]
+        return [[1.0, 0.0] if "CoLA 8.5k" in text else [100.0, 0.0] for text in texts]
 
     picked = select_evidence(
         "How many CoLA training examples?",

@@ -88,32 +88,28 @@ def _region_texts_for_hit(
     return [text] if text is not None else []
 
 
-def _inject_first_slide_pages(question: str, hits: list[PageHit]) -> list[PageHit]:
+def _lift_present_first_slides(question: str, hits: list[PageHit]) -> list[PageHit]:
     q = question.lower()
     if not any(phrase in q for phrase in _FIRST_SLIDE_PHRASES):
         return hits
 
-    pages_by_doc: dict[str, set[int]] = {}
-    best_by_doc: dict[str, PageHit] = {}
+    best_by_doc: dict[str, float] = {}
     for hit in hits:
-        pages_by_doc.setdefault(hit.doc_id, set()).add(hit.page)
         best = best_by_doc.get(hit.doc_id)
-        if best is None or hit.score > best.score:
-            best_by_doc[hit.doc_id] = hit
+        if best is None or hit.score > best:
+            best_by_doc[hit.doc_id] = hit.score
 
-    injected: list[PageHit] = []
-    for doc_id, best in best_by_doc.items():
-        if 1 in pages_by_doc.get(doc_id, set()):
+    lifted: list[PageHit] = []
+    for hit in hits:
+        if hit.page != 1:
+            lifted.append(hit)
             continue
-        injected.append(
-            PageHit(
-                doc_id=doc_id,
-                page=1,
-                score=best.score,
-                source=best.source,
-            )
-        )
-    return hits + injected
+        target = best_by_doc[hit.doc_id] + 1e-6
+        if target > hit.score:
+            lifted.append(hit.model_copy(update={"score": target}))
+        else:
+            lifted.append(hit)
+    return lifted
 
 
 def rerank_pages(
@@ -122,7 +118,7 @@ def rerank_pages(
     *,
     page_text: dict[tuple[str, int], str] | None = None,
 ) -> list[PageHit]:
-    hits = _inject_first_slide_pages(question, hits)
+    hits = _lift_present_first_slides(question, hits)
     cues = {
         (hit.doc_id, hit.page): cue_boost(
             question, hit, _region_texts_for_hit(hit, page_text)
@@ -133,7 +129,8 @@ def rerank_pages(
     ranked = sorted(
         hits,
         key=lambda hit: (
-            -(hit.score + cues[(hit.doc_id, hit.page)]),
+            -hit.score,
+            -cues[(hit.doc_id, hit.page)],
             hit.doc_id,
             hit.page,
         ),

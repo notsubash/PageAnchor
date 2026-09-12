@@ -474,6 +474,7 @@ def test_canonical_moves_restatement_cite_to_earlier_retrieved_page(monkeypatch)
     assert result.citations[0].region_id == table.region_id
     assert result.citations[0].bbox == table.bbox
     assert result.citations[0].verified is True
+    assert [row.page for row in result.trace.verify] == [7]
     assert [region.region_id for region in result.trace.regions] == [
         restatement.region_id
     ]

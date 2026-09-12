@@ -133,7 +133,7 @@ def test_cue_boost_table_phrase_when_text_matches():
     assert cue_boost(question, hit(COLPALI, 7, 0.5), ["No tables here"]) == 0.0
 
 
-def test_rerank_pages_table_cue_beats_small_rrf_gap():
+def test_rerank_pages_table_cue_does_not_beat_small_rrf_gap():
     question = "What does Table 2 show?"
     hits = [
         hit(COLPALI, 6, 0.51, "hybrid"),
@@ -141,7 +141,10 @@ def test_rerank_pages_table_cue_beats_small_rrf_gap():
     ]
     page_text = {(COLPALI, 7): "Table 2 results"}
     ranked = rerank_pages(question, hits, page_text=page_text)
-    assert ranked[0].page == 7
+    assert ranked[0].page == 6
+    assert ranked[0].score == 0.51
+    assert ranked[1].page == 7
+    assert ranked[1].score == 0.50
 
 
 def test_rerank_pages_first_slide_beats_higher_raw_score():
@@ -152,6 +155,19 @@ def test_rerank_pages_first_slide_beats_higher_raw_score():
     ]
     ranked = rerank_pages(question, hits)
     assert ranked[0].page == 1
+    assert ranked[0].score > 0.9
+
+
+def test_rerank_pages_first_slide_does_not_inject_missing_page_one():
+    question = "What is the title on the first slide?"
+    hits = [
+        hit(SLIDES, 4, 0.9, "hybrid"),
+        hit(COLPALI, 3, 0.8, "hybrid"),
+    ]
+    ranked = rerank_pages(question, hits)
+    pages = {(item.doc_id, item.page) for item in ranked}
+    assert (SLIDES, 1) not in pages
+    assert (COLPALI, 1) not in pages
 
 
 def test_cue_boost_first_slide_question():

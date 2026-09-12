@@ -1,6 +1,6 @@
 from pageanchor.ground.canonical import apply_canonical, question_constraints
 from pageanchor.ids import new_trace_id, region_id
-from pageanchor.models import Citation, GroundedAnswer, ScoredRegion, Trace
+from pageanchor.models import Citation, GroundedAnswer, ScoredRegion, Trace, VerifyResult
 
 
 def _region(doc_id: str, page: int, text: str, index: int = 0) -> ScoredRegion:
@@ -62,6 +62,41 @@ def test_apply_canonical_moves_ndcg_restatement_to_table_page():
     assert result.citations[0].bbox == table.bbox
     assert result.citations[0].quote == "nDCG@5"
     assert result.citations[0].verified is True
+
+
+def test_apply_canonical_rebuilds_trace_verify_after_cite_repair():
+    cited = _region("arxiv-2407-colpali", 21, "Later restatement of nDCG@5.")
+    table = _region(
+        "arxiv-2407-colpali",
+        7,
+        "Table 2. Results are presented using nDCG@5 metrics",
+    )
+    question = (
+        "What metric does Table 2 of the ColPali paper use to report ViDoRe results?"
+    )
+    stale = VerifyResult(
+        ok=True,
+        quote="nDCG@5",
+        matched_text="nDCG@5",
+        doc_id=cited.doc_id,
+        page=cited.page,
+        region_id=cited.region_id,
+        quote_in_region=True,
+        answer_in_quote=True,
+    )
+    answer = _answer(question, "nDCG@5", cited, "nDCG@5")
+    answer = answer.model_copy(
+        update={"trace": answer.trace.model_copy(update={"verify": [stale]})}
+    )
+    result = apply_canonical(answer, [cited, table])
+    assert result.citations[0].page == 7
+    assert [row.page for row in result.trace.verify] == [7]
+    assert result.trace.verify[0].region_id == table.region_id
+    assert result.trace.verify[0].ok is True
+    assert result.trace.verify[0].quote == "nDCG@5"
+    assert result.trace.verify[0].matched_text == "nDCG@5"
+    assert result.trace.verify[0].quote_in_region is True
+    assert result.trace.verify[0].answer_in_quote is True
 
 
 def test_apply_canonical_abstains_wrong_year_keeps_citations():
