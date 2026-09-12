@@ -4,10 +4,12 @@ import json
 import os
 import time
 from collections.abc import Callable
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 from pageanchor.config import generator_client, load_settings
+from pageanchor.corpus import load_regions
 from pageanchor.ground.regions import select_evidence
 from pageanchor.ground.verify import answer_in_quote, verify_quote
 from pageanchor.ids import new_trace_id
@@ -22,6 +24,7 @@ from pageanchor.models import (
     VerifyResult,
 )
 from pageanchor.retrieve.hybrid import search_hybrid
+from pageanchor.retrieve.rerank import POOL_K, expand_same_doc, rerank_pages
 from pageanchor.retrieve.sparse import search_bm25
 from pageanchor.retrieve.text import search_text
 from pageanchor.retrieve.visual import search_visual
@@ -81,7 +84,9 @@ def grounded_answer(
 
     search_started = time.perf_counter()
     if hits is None:
-        hits = search_fn(question, k)
+        retrieved = search_fn(question, POOL_K)
+        expanded = expand_same_doc(retrieved)
+        hits = rerank_pages(question, expanded, page_text=_page_text_for_hits(expanded))
     timings["search_ms"] = (time.perf_counter() - search_started) * 1000
 
     if not hits:
@@ -125,6 +130,18 @@ def grounded_answer(
         timings,
         started,
     )
+
+
+def _page_text_for_hits(hits: list[PageHit]) -> dict[tuple[str, int], str]:
+    root = load_settings().corpus_root
+    page_text: dict[tuple[str, int], str] = {}
+    for doc_id, page in {(hit.doc_id, hit.page) for hit in hits}:
+        try:
+            regions = load_regions(root, doc_id, page)
+        except (FileNotFoundError, ValueError):
+            continue
+        page_text[(doc_id, page)] = " ".join(region.text for region in regions)
+    return page_text
 
 
 def apply_strict(answer: GroundedAnswer) -> GroundedAnswer:
@@ -192,7 +209,7 @@ def _apply_policy(
     abstain = False
     reason: AbstainReason | None = None
     answer_text = generated.answer if generated is not None else None
-    if unknown:
+    if generated is None or unknown:
         abstain, reason, answer_text = True, "generator_invalid", None
     elif citations and strict and any(not citation.quote_in_region for citation in citations):
         abstain, reason, answer_text = True, "verify_failed", None
@@ -238,7 +255,7 @@ def _generate_deepseek(question: str, regions: list[ScoredRegion]) -> GeneratorO
             for region in regions
         ],
     }
-    messages = [
+    messages: Any = [
         {"role": "system", "content": _SYSTEM},
         {"role": "user", "content": json.dumps(payload)},
     ]

@@ -1,6 +1,7 @@
 from pageanchor.ground.answer import GeneratorCitation, GeneratorOutput, grounded_answer
 from pageanchor.ids import region_id
 from pageanchor.models import PageHit, ScoredRegion
+from pageanchor.retrieve.rerank import POOL_K
 
 
 def _region(text: str, index: int = 0) -> ScoredRegion:
@@ -299,6 +300,82 @@ def test_apply_strict_maps_support_fail_to_unsupported():
     assert strict.abstain is True
     assert strict.abstain_reason == "unsupported"
     assert strict.answer is None
+
+
+def test_grounded_answer_search_uses_pool_k_and_reranks(monkeypatch):
+    search_calls: list[int] = []
+    select_hits: list[list[PageHit]] = []
+    load_calls: list[tuple[str, int | None]] = []
+
+    def fake_search(query, k, **kwargs):
+        search_calls.append(k)
+        return [
+            PageHit(doc_id="arxiv-2407-colpali", page=1, score=0.8, source="hybrid"),
+            PageHit(doc_id="arxiv-2407-colpali", page=5, score=0.7, source="hybrid"),
+        ]
+
+    def fake_select(question, hits, **kwargs):
+        select_hits.append(list(hits))
+        return []
+
+    def fake_load_regions(root, doc_id: str, page: int | None = None):
+        load_calls.append((doc_id, page))
+        if doc_id == "arxiv-2407-colpali" and page == 7:
+            from pageanchor.models import Region
+
+            return [
+                Region(
+                    doc_id=doc_id,
+                    page=page,
+                    region_id=f"{doc_id}:p{page}:r0",
+                    type="text",
+                    bbox=(0.0, 0.0, 1.0, 1.0),
+                    text="Table 2 results",
+                )
+            ]
+        raise FileNotFoundError("regions missing")
+
+    monkeypatch.setattr("pageanchor.ground.answer.search_hybrid", fake_search)
+    monkeypatch.setattr("pageanchor.ground.answer.select_evidence", fake_select)
+    monkeypatch.setattr("pageanchor.ground.answer.load_regions", fake_load_regions)
+    result = grounded_answer(
+        "What is the title on the first slide?",
+        "hybrid",
+        generate=lambda q, r: GeneratorOutput(),
+    )
+    assert search_calls == [POOL_K]
+    assert len(select_hits) == 1
+    select_pages = {(h.doc_id, h.page) for h in select_hits[0]}
+    assert ("arxiv-2407-colpali", 3) in select_pages
+    assert len(result.trace.hits) <= POOL_K
+    assert len(result.trace.hits) > 2
+    assert load_calls
+
+
+def test_grounded_answer_injected_hits_skip_expand_rerank(monkeypatch):
+    search_called = False
+    select_hits: list[list[PageHit]] = []
+
+    def fake_search(query, k, **kwargs):
+        nonlocal search_called
+        search_called = True
+        return []
+
+    def fake_select(question, hits, **kwargs):
+        select_hits.append(list(hits))
+        return []
+
+    monkeypatch.setattr("pageanchor.ground.answer.search_hybrid", fake_search)
+    monkeypatch.setattr("pageanchor.ground.answer.select_evidence", fake_select)
+    injected = [PageHit(doc_id="hello", page=1, score=1.0, source="text")]
+    grounded_answer(
+        "q",
+        "hybrid",
+        hits=injected,
+        generate=lambda q, r: GeneratorOutput(),
+    )
+    assert search_called is False
+    assert select_hits == [injected]
 
 
 def test_apply_strict_keeps_answer_if_any_quote_contains_it():
