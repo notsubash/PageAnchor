@@ -28,7 +28,7 @@ def _load():
                 tokenizer = getattr(_model, "tokenizer", None)
                 if tokenizer is not None:
                     tokenizer.model_max_length = 1024
-            except (ImportError, RuntimeError) as exc:
+            except (ImportError, RuntimeError, AttributeError) as exc:
                 from pageanchor.config import torch_pair_hint
 
                 raise ImportError(torch_pair_hint(exc, "text encoder could not load")) from exc
