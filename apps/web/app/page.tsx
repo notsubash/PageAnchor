@@ -72,7 +72,9 @@ export default function Home() {
   const [view, setView] = useState<PageView | null>(null);
   const [docs, setDocs] = useState<Record<string, CorpusDoc>>({});
   const lastGood = useRef<PageView | null>(null);
+  const viewRef = useRef<PageView | null>(null);
   const askGen = useRef(0);
+  viewRef.current = view;
 
   const shown = pair ? pair[compareSide] : result;
 
@@ -398,7 +400,15 @@ export default function Home() {
                   alt={`Page ${view.page} of ${view.doc_id}`}
                   src={pagePngUrl(view.doc_id, view.page)}
                   onLoad={() => {
-                    lastGood.current = view;
+                    const docId = view.doc_id;
+                    const page = view.page;
+                    const current = viewRef.current;
+                    if (
+                      current?.doc_id === docId &&
+                      current.page === page
+                    ) {
+                      lastGood.current = { ...current };
+                    }
                   }}
                   onError={() => {
                     setError("Page image missing.");
