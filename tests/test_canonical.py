@@ -1,4 +1,5 @@
 from pageanchor.ground.canonical import apply_canonical, question_constraints
+from pageanchor.ground.verify import answer_in_quote
 from pageanchor.ids import new_trace_id, region_id
 from pageanchor.models import Citation, GroundedAnswer, ScoredRegion, Trace, VerifyResult
 
@@ -223,6 +224,87 @@ def test_canonical_prefers_methods_overlap():
     assert result.citations[0].page == 3
     assert result.citations[0].region_id == methods.region_id
     assert result.answer == "ColBERT"
+
+
+def test_apply_canonical_recomputes_verify_flags_against_final_answer(monkeypatch):
+    from pageanchor.ground import canonical as canonical_mod
+
+    recap = _region(
+        "arxiv-2407-colpali",
+        6,
+        "we introduce ColPali, a Paligemma-3B extension",
+    )
+    methods = _region(
+        "arxiv-2407-colpali",
+        3,
+        "ColPali is built from the PaliGemma-3B model",
+    )
+    recap2 = _region(
+        "arxiv-2407-colpali",
+        5,
+        "ColPali relies on Paligemma-3B",
+    )
+    uppercase = _region(
+        "arxiv-2407-colpali",
+        4,
+        "PALIGEMMA-3B was released",
+    )
+
+    def pick_canon(answer, cited, candidates, question):
+        if cited.region_id == recap.region_id:
+            return methods
+        if cited.region_id == recap2.region_id:
+            return uppercase
+        return cited
+
+    monkeypatch.setattr(canonical_mod, "canonical_region", pick_canon)
+
+    question = "What vision-language model is ColPali built from?"
+    answer = GroundedAnswer(
+        question=question,
+        answer="Paligemma-3B",
+        abstain=False,
+        citations=[
+            Citation(
+                doc_id=recap.doc_id,
+                page=recap.page,
+                region_id=recap.region_id,
+                bbox=recap.bbox,
+                quote="Paligemma-3B",
+                verified=True,
+                quote_in_region=True,
+                answer_in_quote=True,
+            ),
+            Citation(
+                doc_id=recap2.doc_id,
+                page=recap2.page,
+                region_id=recap2.region_id,
+                bbox=recap2.bbox,
+                quote="Paligemma-3B",
+                verified=True,
+                quote_in_region=True,
+                answer_in_quote=True,
+            ),
+        ],
+        trace=Trace(trace_id=new_trace_id(), retrieval_mode="hybrid"),
+    )
+    result = apply_canonical(answer, [recap, methods, recap2, uppercase])
+
+    assert result.answer == "PALIGEMMA-3B"
+    assert result.citations[0].quote == "PaliGemma-3B"
+    assert result.citations[1].quote == "PALIGEMMA-3B"
+    assert result.citations[0].answer_in_quote is False
+    assert result.citations[1].answer_in_quote is True
+    for citation in result.citations:
+        assert citation.answer_in_quote == answer_in_quote(result.answer, citation.quote)
+        assert citation.verified == (
+            citation.quote_in_region and citation.answer_in_quote
+        )
+    for row, citation in zip(result.trace.verify, result.citations, strict=True):
+        assert row.ok == citation.verified
+        assert row.quote == citation.quote
+        assert row.quote_in_region == citation.quote_in_region
+        assert row.answer_in_quote == citation.answer_in_quote
 
 
 def test_canonical_keeps_citation_when_rewritten_pair_fails_verify(monkeypatch):

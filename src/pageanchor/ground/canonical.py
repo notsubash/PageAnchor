@@ -175,6 +175,17 @@ def apply_canonical(
             )
         )
 
+    rewritten = [
+        citation.model_copy(
+            update={
+                "answer_in_quote": answer_in_quote(new_answer, citation.quote),
+                "verified": citation.quote_in_region
+                and answer_in_quote(new_answer, citation.quote),
+            }
+        )
+        for citation in rewritten
+    ]
+
     verify_rows = [
         VerifyResult(
             ok=citation.verified,
