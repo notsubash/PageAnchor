@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 
 from pageanchor.ground.verify import answer_in_quote, verify_quote
 from pageanchor.models import Citation, GroundedAnswer, PageHit, ScoredRegion, VerifyResult
@@ -8,6 +9,7 @@ from pageanchor.retrieve.rerank import cue_boost
 
 _YEAR_RE = re.compile(r"\b(\d{4})\b")
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
+_WS_RE = re.compile(r"\s+")
 
 DEFAULT_CORPUS_TITLES = {
     "adam": "arxiv-1412-adam",
@@ -17,6 +19,18 @@ DEFAULT_CORPUS_TITLES = {
     "mmwr": "cdc-mmwr-7331a1",
     "cpi": "bls-cpi-20250115",
 }
+
+
+def _fold(text: str) -> str:
+    text = unicodedata.normalize("NFKC", text)
+    return _WS_RE.sub(" ", text).strip().casefold()
+
+
+def _folded_in(answer: str | None, text: str) -> bool:
+    if not answer:
+        return False
+    needle = _fold(answer)
+    return bool(needle) and needle in _fold(text)
 
 
 def _alnum_tokens(text: str) -> set[str]:
@@ -36,13 +50,7 @@ def _cue_score(question: str, region: ScoredRegion) -> float:
     return cue_boost(question, hit, [region.text])
 
 
-def _region_score(question: str, region: ScoredRegion) -> float:
-    return _cue_score(question, region) + _token_overlap(question, region.text)
-
-
-def _named_title_docs(
-    question: str, corpus_titles: dict[str, str]
-) -> list[str]:
+def _named_title_docs(question: str, corpus_titles: dict[str, str]) -> list[str]:
     return [
         doc_id
         for token, doc_id in corpus_titles.items()
@@ -50,17 +58,30 @@ def _named_title_docs(
     ]
 
 
-def _shortest_answer_quote(answer: str, region_text: str) -> str:
-    index = region_text.find(answer)
-    if index >= 0:
+def _shortest_folded_span(answer: str, region_text: str) -> str:
+    target = _fold(answer)
+    if not target:
         return answer
-    # ponytail: O(n^2) window scan; regions stay short. Upgrade if quotes need NFKC mapping.
+    if answer in region_text:
+        return answer
     for length in range(len(answer), len(region_text) + 1):
         for start in range(0, len(region_text) - length + 1):
             window = region_text[start : start + length]
-            if verify_quote(answer, window):
+            if _fold(window) == target:
+                return window
+    for length in range(len(answer), len(region_text) + 1):
+        for start in range(0, len(region_text) - length + 1):
+            window = region_text[start : start + length]
+            if target in _fold(window):
                 return window
     return answer
+
+
+def _region_score(
+    question: str, region: ScoredRegion, max_len: int
+) -> float:
+    length_term = (len(region.text) / max_len) if max_len else 0.0
+    return _cue_score(question, region) + _token_overlap(question, region.text) + length_term
 
 
 def question_constraints(
@@ -84,20 +105,42 @@ def canonical_region(
     candidates: list[ScoredRegion],
     question: str,
 ) -> ScoredRegion:
-    if answer is None or not verify_quote(answer, cited.text):
+    if not _folded_in(answer, cited.text):
         return cited
-    best = cited
-    best_score = _region_score(question, cited)
-    for region in candidates:
-        if region.doc_id != cited.doc_id:
-            continue
-        if not verify_quote(answer, region.text):
-            continue
-        score = _region_score(question, region)
-        if score > best_score or (score == best_score and region.page < best.page):
+    matches = [
+        region
+        for region in candidates
+        if region.doc_id == cited.doc_id and _folded_in(answer, region.text)
+    ]
+    if not matches:
+        return cited
+    max_len = max(len(region.text) for region in matches)
+    best = matches[0]
+    best_score = _region_score(question, best, max_len)
+    for region in matches[1:]:
+        score = _region_score(question, region, max_len)
+        if score > best_score or (score == best_score and region.page > best.page):
             best = region
             best_score = score
     return best
+
+
+def _rewrite_citation(
+    answer_text: str | None,
+    quote: str,
+    cited: ScoredRegion,
+    canon: ScoredRegion,
+) -> tuple[str | None, str, ScoredRegion] | None:
+    if canon.region_id == cited.region_id:
+        return None
+    if answer_text is None or not _folded_in(answer_text, canon.text):
+        return None
+    span = _shortest_folded_span(answer_text, canon.text)
+    new_quote = quote if verify_quote(quote, canon.text) else span
+    new_answer = span
+    if not verify_quote(new_quote, canon.text) or not answer_in_quote(new_answer, new_quote):
+        return None
+    return new_answer, new_quote, canon
 
 
 def apply_canonical(
@@ -105,18 +148,20 @@ def apply_canonical(
 ) -> GroundedAnswer:
     by_id = {region.region_id: region for region in candidates}
     rewritten: list[Citation] = []
+    new_answer = answer.answer
     for citation in answer.citations:
         cited = by_id.get(citation.region_id)
         if cited is None:
             rewritten.append(citation)
             continue
         canon = canonical_region(answer.answer, cited, candidates, answer.question)
-        quote = citation.quote
-        if canon.region_id != cited.region_id and not verify_quote(quote, canon.text):
-            if answer.answer is not None and verify_quote(answer.answer, canon.text):
-                quote = _shortest_answer_quote(answer.answer, canon.text)
+        adopted = _rewrite_citation(answer.answer, citation.quote, cited, canon)
+        if adopted is None:
+            rewritten.append(citation)
+            continue
+        new_answer, quote, canon = adopted
         qin = verify_quote(quote, canon.text)
-        ain = answer_in_quote(answer.answer, quote)
+        ain = answer_in_quote(new_answer, quote)
         rewritten.append(
             Citation(
                 doc_id=canon.doc_id,
@@ -145,6 +190,7 @@ def apply_canonical(
     ]
     result = answer.model_copy(
         update={
+            "answer": new_answer,
             "citations": rewritten,
             "trace": answer.trace.model_copy(update={"verify": verify_rows}),
         }
