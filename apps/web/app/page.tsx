@@ -1,15 +1,58 @@
 "use client";
 
-import { FormEvent, SVGProps, useRef, useState } from "react";
+import { FormEvent, SVGProps, useEffect, useRef, useState } from "react";
 
 import {
+  BBox,
   Citation,
+  CorpusDoc,
   GroundedAnswer,
   RetrievalMode,
+  ScoredRegion,
+  getCorpus,
   pagePngUrl,
   postAnswer,
   postReceipt,
 } from "@/lib/api";
+
+type PageView = {
+  doc_id: string;
+  page: number;
+  bbox: BBox | null;
+  region_id: string | null;
+};
+
+function citationView(citation: Citation): PageView {
+  return {
+    doc_id: citation.doc_id,
+    page: citation.page,
+    bbox: citation.bbox,
+    region_id: citation.region_id,
+  };
+}
+
+function regionView(region: ScoredRegion): PageView {
+  return {
+    doc_id: region.doc_id,
+    page: region.page,
+    bbox: region.bbox,
+    region_id: region.region_id,
+  };
+}
+
+function hitView(docId: string, page: number): PageView {
+  return { doc_id: docId, page, bbox: null, region_id: null };
+}
+
+function defaultView(answer: GroundedAnswer): PageView | null {
+  if (answer.citations[0]) {
+    return citationView(answer.citations[0]);
+  }
+  if (answer.trace.regions[0]) {
+    return regionView(answer.trace.regions[0]);
+  }
+  return null;
+}
 
 const MODES: RetrievalMode[] = ["text", "visual", "hybrid"];
 
@@ -18,7 +61,7 @@ export default function Home() {
   const [mode, setMode] = useState<RetrievalMode>("hybrid");
   const [strict, setStrict] = useState(true);
   const [compare, setCompare] = useState(false);
-  const [view, setView] = useState<"text" | "hybrid">("hybrid");
+  const [compareSide, setCompareSide] = useState<"text" | "hybrid">("hybrid");
   const [pair, setPair] = useState<{
     text: GroundedAnswer;
     hybrid: GroundedAnswer;
@@ -26,10 +69,26 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GroundedAnswer | null>(null);
-  const [selected, setSelected] = useState<Citation | null>(null);
+  const [view, setView] = useState<PageView | null>(null);
+  const [docs, setDocs] = useState<Record<string, CorpusDoc>>({});
+  const lastGood = useRef<PageView | null>(null);
   const askGen = useRef(0);
 
-  const shown = pair ? pair[view] : result;
+  const shown = pair ? pair[compareSide] : result;
+
+  useEffect(() => {
+    void getCorpus()
+      .then((rows) => {
+        const next: Record<string, CorpusDoc> = {};
+        for (const row of rows) {
+          next[row.id] = row;
+        }
+        setDocs(next);
+      })
+      .catch(() => {
+        /* titles fall back to doc_id */
+      });
+  }, []);
 
   async function ask(asked: string) {
     const gen = ++askGen.current;
@@ -46,23 +105,24 @@ export default function Home() {
           return;
         }
         setPair({ text: textAns, hybrid: hybridAns });
-        setView("hybrid");
+        setCompareSide("hybrid");
         setResult(hybridAns);
-        setSelected(hybridAns.citations[0] ?? null);
+        setView(defaultView(hybridAns));
       } else {
         const primary = await postAnswer({ question: asked, mode, strict });
         if (gen !== askGen.current) {
           return;
         }
         setResult(primary);
-        setSelected(primary.citations[0] ?? null);
+        setView(defaultView(primary));
       }
     } catch (err) {
       if (gen !== askGen.current) {
         return;
       }
       setResult(null);
-      setSelected(null);
+      setView(null);
+      lastGood.current = null;
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       if (gen === askGen.current) {
@@ -81,9 +141,9 @@ export default function Home() {
   }
 
   function onCompareView(next: "text" | "hybrid") {
-    setView(next);
+    setCompareSide(next);
     if (pair) {
-      setSelected(pair[next].citations[0] ?? null);
+      setView(defaultView(pair[next]));
     }
   }
 
@@ -108,7 +168,7 @@ export default function Home() {
     }
   }
 
-  const pageLabel = selected ? `p.\u00a0${selected.page}` : "No page";
+  const pageLabel = view ? `p.\u00a0${view.page}` : "No page";
   const abstainBanner =
     shown?.abstain_reason === "unsupported"
       ? "The quote is on the page but does not contain the answer."
@@ -203,7 +263,7 @@ export default function Home() {
                 <button
                   type="button"
                   className="mode"
-                  aria-pressed={view === "text"}
+                  aria-pressed={compareSide === "text"}
                   onClick={() => onCompareView("text")}
                 >
                   TEXT
@@ -211,7 +271,7 @@ export default function Home() {
                 <button
                   type="button"
                   className="mode"
-                  aria-pressed={view === "hybrid"}
+                  aria-pressed={compareSide === "hybrid"}
                   onClick={() => onCompareView("hybrid")}
                 >
                   HYBRID
@@ -247,10 +307,10 @@ export default function Home() {
                       <button
                         type="button"
                         aria-current={
-                          selected?.region_id === citation.region_id &&
-                          selected?.quote === citation.quote
+                          view?.region_id === citation.region_id &&
+                          view?.page === citation.page
                         }
-                        onClick={() => setSelected(citation)}
+                        onClick={() => setView(citationView(citation))}
                       >
                         <span className="cite-index">{index + 1}</span>
                         <div className="cite-body">
@@ -287,24 +347,75 @@ export default function Home() {
               <IconDocument />
               Document
             </h2>
-            <span className="doc-id">{selected ? selected.doc_id : "No page selected"}</span>
+            <div className="doc-meta">
+              <span className="doc-title">
+                {view
+                  ? docs[view.doc_id]?.title || view.doc_id
+                  : "No page selected"}
+              </span>
+              {view ? <span className="doc-id">{view.doc_id}</span> : null}
+            </div>
+            {view && docs[view.doc_id]?.pages ? (
+              <div className="page-walk">
+                <button
+                  type="button"
+                  className="ghost"
+                  disabled={view.page <= 1}
+                  onClick={() =>
+                    setView({
+                      doc_id: view.doc_id,
+                      page: view.page - 1,
+                      bbox: null,
+                      region_id: null,
+                    })
+                  }
+                >
+                  Prev
+                </button>
+                <button
+                  type="button"
+                  className="ghost"
+                  disabled={view.page >= (docs[view.doc_id]?.pages ?? view.page)}
+                  onClick={() =>
+                    setView({
+                      doc_id: view.doc_id,
+                      page: view.page + 1,
+                      bbox: null,
+                      region_id: null,
+                    })
+                  }
+                >
+                  Next
+                </button>
+              </div>
+            ) : null}
           </div>
           <div className={`canvas${loading ? " busy" : ""}`}>
-            {selected ? (
+            {view ? (
               <div className="stage">
                 <img
-                  alt={`Page ${selected.page} of ${selected.doc_id}`}
-                  src={pagePngUrl(selected.doc_id, selected.page)}
-                />
-                <div
-                  className="bbox"
-                  style={{
-                    left: `${selected.bbox[0] * 100}%`,
-                    top: `${selected.bbox[1] * 100}%`,
-                    width: `${(selected.bbox[2] - selected.bbox[0]) * 100}%`,
-                    height: `${(selected.bbox[3] - selected.bbox[1]) * 100}%`,
+                  key={`${view.doc_id}-${view.page}`}
+                  alt={`Page ${view.page} of ${view.doc_id}`}
+                  src={pagePngUrl(view.doc_id, view.page)}
+                  onLoad={() => {
+                    lastGood.current = view;
+                  }}
+                  onError={() => {
+                    setError("Page image missing.");
+                    setView(lastGood.current);
                   }}
                 />
+                {view.bbox ? (
+                  <div
+                    className="bbox"
+                    style={{
+                      left: `${view.bbox[0] * 100}%`,
+                      top: `${view.bbox[1] * 100}%`,
+                      width: `${(view.bbox[2] - view.bbox[0]) * 100}%`,
+                      height: `${(view.bbox[3] - view.bbox[1]) * 100}%`,
+                    }}
+                  />
+                ) : null}
               </div>
             ) : shown?.abstain ? (
               <div className="empty-canvas">
@@ -360,11 +471,54 @@ export default function Home() {
                     <tbody>
                       {shown.trace.hits.map((hit) => (
                         <tr key={`${hit.doc_id}-${hit.page}-${hit.source}`}>
-                          <td>{hit.doc_id}</td>
-                          <td>{hit.page}</td>
-                          <td>{hit.score.toFixed(3)}</td>
+                          <td colSpan={3} style={{ padding: 0, border: 0 }}>
+                            <button
+                              type="button"
+                              className="hit-row"
+                              onClick={() => setView(hitView(hit.doc_id, hit.page))}
+                            >
+                              <span>{hit.doc_id}</span>
+                              <span>{hit.page}</span>
+                              <span>{hit.score.toFixed(3)}</span>
+                            </button>
+                          </td>
                         </tr>
                       ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="card">
+                  <table className="grid">
+                    <caption>Regions</caption>
+                    <thead>
+                      <tr>
+                        <th>Doc</th>
+                        <th>Pg</th>
+                        <th>Score</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {shown.trace.regions.length === 0 ? (
+                        <tr>
+                          <td colSpan={3}>none</td>
+                        </tr>
+                      ) : (
+                        shown.trace.regions.map((region) => (
+                          <tr key={region.region_id}>
+                            <td colSpan={3} style={{ padding: 0, border: 0 }}>
+                              <button
+                                type="button"
+                                className="hit-row"
+                                onClick={() => setView(regionView(region))}
+                              >
+                                <span>{region.doc_id}</span>
+                                <span>{region.page}</span>
+                                <span>{region.score.toFixed(3)}</span>
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>

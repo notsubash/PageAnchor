@@ -476,6 +476,27 @@ textarea {
   padding-right: 0.85rem;
 }
 
+.doc-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.doc-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  font-weight: 560;
+}
+
+.page-walk {
+  display: flex;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
 .doc-id {
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 0.8rem;
@@ -483,6 +504,24 @@ textarea {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.hit-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.7rem;
+  width: 100%;
+  padding: 0.32rem 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.hit-row:hover {
+  background: var(--field);
 }
 
 .canvas {
