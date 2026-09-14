@@ -81,6 +81,14 @@ class ReceiptDocument(BaseModel):
     sha256: str
 
 
+class ReceiptCrop(BaseModel):
+    doc_id: str
+    page: int = Field(ge=1)
+    region_id: str | None = None
+    bbox: BBox
+    png_base64: str
+
+
 class Receipt(BaseModel):
     question: str
     answer: str | None
@@ -89,6 +97,7 @@ class Receipt(BaseModel):
     citations: list[Citation]
     verify: list[VerifyResult]
     documents: list[ReceiptDocument]
+    crops: list[ReceiptCrop] = Field(default_factory=list)
     ingest_version: str
     layout_engine: str
     retrieval_mode: RetrievalMode

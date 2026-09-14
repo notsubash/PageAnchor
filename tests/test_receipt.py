@@ -1,3 +1,5 @@
+import base64
+
 from pageanchor.ground.receipt import build_receipt, crop_citation_png
 from pageanchor.ids import new_trace_id
 from pageanchor.models import Citation, GroundedAnswer, Trace
@@ -36,6 +38,72 @@ def test_build_receipt_copies_hash_from_manifest(tmp_path, monkeypatch):
     assert receipt.documents[0].sha256 == "abc"
     assert receipt.abstain_reason == "unsupported"
     assert receipt.trace_id == answer.trace.trace_id
+
+
+def test_build_receipt_includes_png_base64(tmp_path, monkeypatch):
+    monkeypatch.setenv("PAGEANCHOR_CORPUS_ROOT", str(tmp_path))
+    (tmp_path / "manifest.json").write_text(
+        '{"version":"1.0.0","ingest_version":"1","documents":[{"id":"hello","title":"H","path":"pdfs/h.pdf","pages":1,"sha256":"abc","license":"t"}]}',
+        encoding="utf-8",
+    )
+    page_dir = tmp_path / "pages" / "hello"
+    page_dir.mkdir(parents=True)
+    (page_dir / "p1.png").write_bytes(PNG_1X1)
+    answer = GroundedAnswer(
+        question="token?",
+        answer="THE_TOKEN_42",
+        abstain=False,
+        citations=[
+            Citation(
+                doc_id="hello",
+                page=1,
+                region_id="hello:p1:r0",
+                bbox=(0.0, 0.0, 1.0, 1.0),
+                quote="THE_TOKEN_42",
+                verified=True,
+                quote_in_region=True,
+                answer_in_quote=True,
+            )
+        ],
+        trace=Trace(trace_id=new_trace_id(), retrieval_mode="hybrid"),
+    )
+    receipt = build_receipt(answer, corpus_root=tmp_path)
+    assert len(receipt.crops) == 1
+    assert receipt.crops[0].doc_id == "hello"
+    assert receipt.crops[0].page == 1
+    assert receipt.crops[0].region_id == "hello:p1:r0"
+    assert receipt.crops[0].bbox == (0.0, 0.0, 1.0, 1.0)
+    raw = base64.standard_b64decode(receipt.crops[0].png_base64)
+    assert raw[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def test_build_receipt_skips_missing_crop(tmp_path, monkeypatch):
+    monkeypatch.setenv("PAGEANCHOR_CORPUS_ROOT", str(tmp_path))
+    (tmp_path / "manifest.json").write_text(
+        '{"version":"1.0.0","ingest_version":"1","documents":[{"id":"hello","title":"H","path":"pdfs/h.pdf","pages":1,"sha256":"abc","license":"t"}]}',
+        encoding="utf-8",
+    )
+    answer = GroundedAnswer(
+        question="token?",
+        answer=None,
+        abstain=True,
+        abstain_reason="unsupported",
+        citations=[
+            Citation(
+                doc_id="hello",
+                page=1,
+                region_id="hello:p1:r0",
+                bbox=(0.1, 0.1, 0.5, 0.2),
+                quote="Single-Task Training",
+                quote_in_region=True,
+                answer_in_quote=False,
+            )
+        ],
+        trace=Trace(trace_id=new_trace_id(), retrieval_mode="hybrid"),
+    )
+    receipt = build_receipt(answer, corpus_root=tmp_path)
+    assert receipt.crops == []
+    assert receipt.documents[0].sha256 == "abc"
 
 
 def test_crop_citation_png_returns_png_bytes(tmp_path, monkeypatch):

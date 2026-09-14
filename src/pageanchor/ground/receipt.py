@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import base64
 from io import BytesIO
 from pathlib import Path
 
 from pageanchor.config import layout_engine, load_settings
 from pageanchor.corpus import get_document, load_manifest, page_png_path
-from pageanchor.models import BBox, GroundedAnswer, Receipt, ReceiptDocument
+from pageanchor.models import BBox, GroundedAnswer, Receipt, ReceiptCrop, ReceiptDocument
 
 
 def build_receipt(answer: GroundedAnswer, *, corpus_root: Path | None = None) -> Receipt:
@@ -21,6 +22,26 @@ def build_receipt(answer: GroundedAnswer, *, corpus_root: Path | None = None) ->
         documents.append(
             ReceiptDocument(id=citation.doc_id, sha256=str(doc.get("sha256") or ""))
         )
+    crops: list[ReceiptCrop] = []
+    for citation in answer.citations:
+        try:
+            png = crop_citation_png(
+                citation.doc_id,
+                citation.page,
+                citation.bbox,
+                corpus_root=root,
+            )
+        except (FileNotFoundError, OSError):
+            continue
+        crops.append(
+            ReceiptCrop(
+                doc_id=citation.doc_id,
+                page=citation.page,
+                region_id=citation.region_id,
+                bbox=citation.bbox,
+                png_base64=base64.standard_b64encode(png).decode("ascii"),
+            )
+        )
     return Receipt(
         question=answer.question,
         answer=answer.answer,
@@ -29,6 +50,7 @@ def build_receipt(answer: GroundedAnswer, *, corpus_root: Path | None = None) ->
         citations=answer.citations,
         verify=answer.trace.verify,
         documents=documents,
+        crops=crops,
         ingest_version=str(manifest.get("ingest_version") or ""),
         layout_engine=layout_engine(),
         retrieval_mode=answer.trace.retrieval_mode,
