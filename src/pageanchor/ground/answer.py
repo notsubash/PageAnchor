@@ -53,6 +53,10 @@ Rules:
 - citation.region_id must be one of the provided region_id values.
 - The answer string must be a verbatim substring of at least one citation.quote.
   Use a short extractive span (a name, a number, a title), not a paraphrase.
+- If a provided region already contains a short extractive span that answers
+  the question, you must not abstain. Quote that span.
+- Prefer a methods paragraph, table, or first statement of the fact over a
+  later recap on another page.
 - If the regions do not contain the answer, abstain=true,
   abstain_reason="unanswerable", answer=null, citations=[].
 - Otherwise set abstain=false, a short answer, and at least one citation.

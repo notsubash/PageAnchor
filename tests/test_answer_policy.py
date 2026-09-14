@@ -1,4 +1,9 @@
-from pageanchor.ground.answer import GeneratorCitation, GeneratorOutput, grounded_answer
+from pageanchor.ground.answer import (
+    GeneratorCitation,
+    GeneratorOutput,
+    _SYSTEM,
+    grounded_answer,
+)
 from pageanchor.ids import region_id
 from pageanchor.models import PageHit, Region, ScoredRegion
 from pageanchor.retrieve.rerank import POOL_K
@@ -14,6 +19,11 @@ def _region(text: str, index: int = 0) -> ScoredRegion:
         text=text,
         score=1.0,
     )
+
+
+def test_system_prompt_forbids_abstain_when_span_is_present():
+    assert "do not abstain" in _SYSTEM.lower() or "must not abstain" in _SYSTEM.lower()
+    assert "methods" in _SYSTEM.lower() or "table" in _SYSTEM.lower()
 
 
 def test_empty_hits_abstain_no_hits():
