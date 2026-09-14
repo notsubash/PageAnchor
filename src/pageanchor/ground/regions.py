@@ -52,6 +52,77 @@ EmbedFn = Callable[[list[str]], list[list[float]]]
 CROP_SHORTLIST = 24
 
 
+def _unique_top_hits(hits: list[PageHit], max_regions: int) -> list[PageHit]:
+    seen: set[tuple[str, int]] = set()
+    out: list[PageHit] = []
+    for hit in hits:
+        key = (hit.doc_id, hit.page)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(hit)
+        if len(out) >= max_regions:
+            break
+    return out
+
+
+def _best_on_page(
+    ranked: list[ScoredRegion], doc_id: str, page: int
+) -> ScoredRegion | None:
+    for region in ranked:
+        if region.doc_id == doc_id and region.page == page:
+            return region
+    return None
+
+
+def _longest_on_page(root: Path, doc_id: str, page: int) -> ScoredRegion | None:
+    try:
+        page_regions = load_regions(root, doc_id, page)
+    except (FileNotFoundError, ValueError):
+        return None
+    if not page_regions:
+        return None
+    longest = max(page_regions, key=lambda region: len(region.text))
+    return ScoredRegion(**longest.model_dump(), score=0.0)
+
+
+def _slot_regions(
+    ranked: list[ScoredRegion],
+    hits: list[PageHit],
+    *,
+    max_regions: int,
+    per_page: int,
+    corpus_root: Path,
+) -> list[ScoredRegion]:
+    picked: list[ScoredRegion] = []
+    picked_ids: set[str] = set()
+    counts: dict[tuple[str, int], int] = {}
+    for hit in _unique_top_hits(hits, max_regions):
+        key = (hit.doc_id, hit.page)
+        region = _best_on_page(ranked, hit.doc_id, hit.page)
+        if region is None:
+            region = _longest_on_page(corpus_root, hit.doc_id, hit.page)
+        if region is None or region.region_id in picked_ids:
+            continue
+        picked.append(region)
+        picked_ids.add(region.region_id)
+        counts[key] = 1
+        if len(picked) >= max_regions:
+            return picked
+    for region in ranked:
+        if len(picked) >= max_regions:
+            break
+        if region.region_id in picked_ids:
+            continue
+        key = (region.doc_id, region.page)
+        if counts.get(key, 0) >= per_page:
+            continue
+        counts[key] = counts.get(key, 0) + 1
+        picked.append(region)
+        picked_ids.add(region.region_id)
+    return picked
+
+
 def select_regions(
     query: str,
     doc_id: str,
@@ -156,34 +227,13 @@ def select_evidence(
                 corpus_root=corpus_root,
             ),
         )
-    counts: dict[tuple[str, int], int] = {}
-    picked: list[ScoredRegion] = []
-    picked_ids: set[str] = set()
-    for hit in hits:
-        if len(picked) >= max_regions:
-            break
-        key = (hit.doc_id, hit.page)
-        if key in counts:
-            continue
-        for region in ranked:
-            if (region.doc_id, region.page) != key or region.region_id in picked_ids:
-                continue
-            picked.append(region)
-            picked_ids.add(region.region_id)
-            counts[key] = 1
-            break
-    for region in ranked:
-        if len(picked) >= max_regions:
-            break
-        if region.region_id in picked_ids:
-            continue
-        key = (region.doc_id, region.page)
-        if counts.get(key, 0) >= per_page:
-            continue
-        counts[key] = counts.get(key, 0) + 1
-        picked.append(region)
-        picked_ids.add(region.region_id)
-    return picked
+    return _slot_regions(
+        ranked,
+        hits,
+        max_regions=max_regions,
+        per_page=per_page,
+        corpus_root=root,
+    )
 
 
 def _query_tokens(query: str) -> set[str]:
