@@ -7,7 +7,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from pageanchor.ids import new_trace_id
-from pageanchor.models import Citation, GroundedAnswer, PageHit, Trace
+from pageanchor.models import Citation, GroundedAnswer, PageHit, ScoredRegion, Trace
 
 pytest.importorskip("fastapi")
 
@@ -143,6 +143,46 @@ def test_page_png_and_regions(corpus: Path):
     _run(run())
 
 
+def test_evidence_calls_select_evidence(corpus: Path, monkeypatch: pytest.MonkeyPatch):
+    from pageanchor.api import routes
+
+    seen: dict = {}
+
+    def fake_select(question, hits, **kwargs):
+        seen["question"] = question
+        seen["hits"] = hits
+        seen["max_regions"] = kwargs.get("max_regions")
+        return [
+            ScoredRegion(
+                doc_id="hello",
+                page=1,
+                region_id="hello:p1:r0",
+                type="text",
+                bbox=(0.1, 0.1, 0.5, 0.2),
+                text="THE_TOKEN_42 lives here",
+                score=1.0,
+            )
+        ]
+
+    monkeypatch.setattr(routes, "select_evidence", fake_select)
+
+    async def run():
+        async with await _client() as client:
+            evidence = await client.post(
+                "/v1/evidence",
+                json={"query": "TOKEN", "doc_id": "hello", "page": 1, "max_regions": 5},
+            )
+        assert evidence.status_code == 200
+        assert seen["question"] == "TOKEN"
+        assert seen["max_regions"] == 5
+        assert len(seen["hits"]) == 1
+        assert seen["hits"][0].doc_id == "hello"
+        assert seen["hits"][0].page == 1
+        assert evidence.json()["regions"][0]["region_id"] == "hello:p1:r0"
+
+    _run(run())
+
+
 def test_search_evidence_verify(corpus: Path, monkeypatch: pytest.MonkeyPatch):
     from pageanchor.api import routes
 
@@ -150,6 +190,21 @@ def test_search_evidence_verify(corpus: Path, monkeypatch: pytest.MonkeyPatch):
         routes,
         "search_hybrid",
         lambda query, k: [PageHit(doc_id="hello", page=1, score=0.8, source="hybrid")],
+    )
+    monkeypatch.setattr(
+        routes,
+        "select_evidence",
+        lambda question, hits, **kwargs: [
+            ScoredRegion(
+                doc_id="hello",
+                page=1,
+                region_id="hello:p1:r0",
+                type="text",
+                bbox=(0.1, 0.1, 0.5, 0.2),
+                text="THE_TOKEN_42 lives here",
+                score=1.0,
+            )
+        ],
     )
 
     async def run():

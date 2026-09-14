@@ -9,10 +9,10 @@ from pageanchor.config import load_settings
 from pageanchor.corpus import find_region, load_regions
 from pageanchor.ground.answer import grounded_answer as run_grounded_answer
 from pageanchor.ground.receipt import build_receipt
-from pageanchor.ground.regions import select_regions
+from pageanchor.ground.regions import select_evidence as select_evidence_core
 from pageanchor.ground.verify import verify_quote as quote_in_region
 from pageanchor.ids import new_trace_id
-from pageanchor.models import GroundedAnswer, OverlayMode, Receipt, RetrievalMode
+from pageanchor.models import GroundedAnswer, OverlayMode, PageHit, Receipt, RetrievalMode
 from pageanchor.retrieve.hybrid import search_hybrid
 from pageanchor.retrieve.text import search_text
 from pageanchor.retrieve.visual import search_visual
@@ -57,10 +57,9 @@ def register_tools(mcp: MCPServer) -> None:
         page: Annotated[int, Field(ge=1)],
         max_regions: Annotated[int, Field(ge=1)] = 5,
     ) -> dict[str, Any]:
-        regions = select_regions(
+        regions = select_evidence_core(
             query,
-            doc_id,
-            page,
+            [PageHit(doc_id=doc_id, page=page, score=1.0, source="hybrid")],
             max_regions=max_regions,
             corpus_root=load_settings().corpus_root,
         )

@@ -7,7 +7,7 @@ import pytest
 
 from pageanchor.ground.answer import GeneratorCitation, GeneratorOutput, grounded_answer
 from pageanchor.ids import new_trace_id
-from pageanchor.models import Citation, GroundedAnswer, PageHit, Trace
+from pageanchor.models import Citation, GroundedAnswer, PageHit, ScoredRegion, Trace
 
 pytest.importorskip("mcp")
 
@@ -146,10 +146,59 @@ def test_resources_serve_manifest_regions_and_png(corpus: Path):
     _run(run())
 
 
+def test_mcp_select_evidence_uses_core_select_evidence(
+    corpus: Path, monkeypatch: pytest.MonkeyPatch
+):
+    seen: dict = {}
+
+    def fake_select(question, hits, **kwargs):
+        seen["question"] = question
+        seen["hits"] = hits
+        return [
+            ScoredRegion(
+                doc_id="hello",
+                page=1,
+                region_id="hello:p1:r0",
+                type="text",
+                bbox=(0.1, 0.1, 0.5, 0.2),
+                text="THE_TOKEN_42 lives here",
+                score=1.0,
+            )
+        ]
+
+    monkeypatch.setattr("pageanchor.mcp.tools.select_evidence_core", fake_select)
+
+    async def run():
+        async with _client() as client:
+            evidence = await client.call_tool(
+                "select_evidence",
+                {"query": "TOKEN", "doc_id": "hello", "page": 1, "max_regions": 5},
+            )
+        assert seen["question"] == "TOKEN"
+        assert seen["hits"][0].page == 1
+        assert _body(evidence)["regions"][0]["region_id"] == "hello:p1:r0"
+
+    _run(run())
+
+
 def test_search_evidence_verify(corpus: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "pageanchor.mcp.tools.search_hybrid",
         lambda query, k: [PageHit(doc_id="hello", page=1, score=0.8, source="hybrid")],
+    )
+    monkeypatch.setattr(
+        "pageanchor.mcp.tools.select_evidence_core",
+        lambda question, hits, **kwargs: [
+            ScoredRegion(
+                doc_id="hello",
+                page=1,
+                region_id="hello:p1:r0",
+                type="text",
+                bbox=(0.1, 0.1, 0.5, 0.2),
+                text="THE_TOKEN_42 lives here",
+                score=1.0,
+            )
+        ],
     )
 
     async def run():
