@@ -1,7 +1,7 @@
 from pageanchor.ground.answer import (
+    _SYSTEM,
     GeneratorCitation,
     GeneratorOutput,
-    _SYSTEM,
     grounded_answer,
 )
 from pageanchor.ids import region_id
