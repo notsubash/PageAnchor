@@ -37,7 +37,7 @@ Layout defaults to PyMuPDF text blocks so gold quotes stay stable on Windows. `P
 `grounded_answer(question, mode, strict=True)`:
 
 1. **Retrieve pages.** `text` embeds the query with Qwen3-Embedding-0.6B and collapses chunks to `(doc_id, page)`. `visual` encodes the query with ColQwen2 and scores every page with numpy MaxSim (brute force; fine until the corpus is far past a thousand pages). Encoders use CUDA when `torch.cuda.is_available()` (override with `PAGEANCHOR_DEVICE=cpu` or `cuda`). `hybrid` is Reciprocal Rank Fusion over page keys, `k_rrf=60`. Default production mode is `hybrid`.
-2. **Select regions.** On each hit page, rank stored regions by token Jaccard with the query (question stopwords dropped). Keep the global top 5.
+2. **Select regions.** On each hit page, rank stored regions by token Jaccard with the query (question stopwords dropped). Guarantee one region from each unique page in `hits[:5]`, then fill from dense/visual rank with `per_page=2`.
 3. **Generate.** DeepSeek V4 (`deepseek-v4-flash` via the OpenAI SDK) must return structured `GeneratorOutput`: an answer or abstain, plus citations whose `region_id` is in the prompt and whose `quote` is a verbatim substring of that region.
 4. **Verify.** Each quote is checked with `verify_quote` against the cited region's text. The answer is checked with `answer_in_quote` against each quote. `verified` is both.
 5. **Policy.** Empty hits → `abstain_reason="no_hits"`. Unknown `region_id`, unparseable generator output, empty citations, or a null answer while not abstaining → `generator_invalid`. Generator `abstain=true` → `unanswerable`. If `strict` and any citation fails quote-in-region → `abstain=true`, `answer=None`, `abstain_reason="verify_failed"`. If the quotes are in their regions but the answer is not a normalized substring of any citation quote, `abstain_reason="unsupported"`. Citations stay on the object with `verified=false` so the trace is inspectable. There is no retry loop.
@@ -47,6 +47,8 @@ Layout defaults to PyMuPDF text blocks so gold quotes stay stable on Windows. `P
 ## Verify
 
 Normalization is Unicode NFKC, whitespace collapsed to single spaces, strip, **case preserved**. `"ViDoRe"` does not match `"vidore"`. Table cells and proper nouns are the product.
+
+Canonical search may casefold to find the original page, then rewrites the answer to that page's characters; `verify_quote` itself stays case-preserving.
 
 Verify is a substring check. It does not score entailment. `verified` requires quote-in-region and answer-in-quote. Wrong-page restatements that happen to contain the answer string can still pass; that remains a retrieval miss, scored as citation-page error.
 

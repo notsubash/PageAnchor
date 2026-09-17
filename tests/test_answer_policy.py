@@ -1,4 +1,9 @@
-from pageanchor.ground.answer import GeneratorCitation, GeneratorOutput, grounded_answer
+from pageanchor.ground.answer import (
+    _SYSTEM,
+    GeneratorCitation,
+    GeneratorOutput,
+    grounded_answer,
+)
 from pageanchor.ids import region_id
 from pageanchor.models import PageHit, Region, ScoredRegion
 from pageanchor.retrieve.rerank import POOL_K
@@ -14,6 +19,11 @@ def _region(text: str, index: int = 0) -> ScoredRegion:
         text=text,
         score=1.0,
     )
+
+
+def test_system_prompt_forbids_abstain_when_span_is_present():
+    assert "do not abstain" in _SYSTEM.lower() or "must not abstain" in _SYSTEM.lower()
+    assert "methods" in _SYSTEM.lower() or "table" in _SYSTEM.lower()
 
 
 def test_empty_hits_abstain_no_hits():
@@ -166,6 +176,31 @@ def test_model_no_hits_reason_becomes_unanswerable():
     )
     assert result.abstain is True
     assert result.abstain_reason == "unanswerable"
+
+
+def test_verified_citation_keeps_answer_even_if_model_abstains():
+    region = _region("Hello THE_TOKEN_42")
+
+    def fake_generate(question, regions):
+        return GeneratorOutput(
+            answer="THE_TOKEN_42",
+            abstain=True,
+            abstain_reason="unanswerable",
+            citations=[
+                GeneratorCitation(region_id=region.region_id, quote="THE_TOKEN_42")
+            ],
+        )
+
+    result = grounded_answer(
+        "What is the token?",
+        "text",
+        hits=[PageHit(doc_id="hello", page=1, score=1.0, source="text")],
+        regions=[region],
+        generate=fake_generate,
+    )
+    assert result.abstain is False
+    assert result.answer == "THE_TOKEN_42"
+    assert result.citations[0].verified is True
 
 
 def test_verify_failed_wins_over_model_abstain():

@@ -70,7 +70,7 @@ Pages are 1-based.
 | ------------------ | --------------------------- |
 | `search_documents` | `search_text/visual/hybrid` |
 | `get_page_regions` | load regions JSON           |
-| `select_evidence`  | `select_regions`            |
+| `select_evidence`  | `select_evidence` on `[PageHit(doc_id, page)]` |
 | `verify_quote`     | `verify_quote` on stored region text |
 | `grounded_answer`  | `grounded_answer`           |
 | `export_receipt`   | `build_receipt` from a `GroundedAnswer` |

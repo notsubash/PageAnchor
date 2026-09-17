@@ -19,11 +19,11 @@ from pageanchor.corpus import (
 )
 from pageanchor.ground.answer import grounded_answer
 from pageanchor.ground.receipt import build_receipt
-from pageanchor.ground.regions import select_regions
+from pageanchor.ground.regions import select_evidence
 from pageanchor.ground.verify import verify_quote
 from pageanchor.ids import new_trace_id
 from pageanchor.ingest.index_text import table_names
-from pageanchor.models import GroundedAnswer, OverlayMode
+from pageanchor.models import GroundedAnswer, OverlayMode, PageHit
 from pageanchor.retrieve.hybrid import search_hybrid
 from pageanchor.retrieve.text import search_text
 from pageanchor.retrieve.visual import search_visual
@@ -107,11 +107,10 @@ def search(body: SearchBody) -> dict:
 @router.post("/v1/evidence")
 def evidence(body: EvidenceBody, settings: Settings = Depends(get_settings)) -> dict:
     regions = _http_call(
-        select_regions,
+        select_evidence,
         body.query,
-        body.doc_id,
-        body.page,
-        body.max_regions,
+        [PageHit(doc_id=body.doc_id, page=body.page, score=1.0, source="hybrid")],
+        max_regions=body.max_regions,
         corpus_root=settings.corpus_root,
     )
     return _traced(regions=[region.model_dump() for region in regions])

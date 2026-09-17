@@ -169,3 +169,5 @@ uv run --no-sync pageanchor eval --gold corpus/eval/hard_questions.jsonl \
   --modes text,visual,hybrid,hybrid+verify \
   --out eval/results/$(date +%F)-hard
 ```
+
+Task 7 (2026-09-14) skipped writing a new dated folder on this machine: the running interpreter had no CUDA (`torch.cuda.is_available()` false). Re-run the commands above on a CUDA host to refresh hard and frozen D tables.

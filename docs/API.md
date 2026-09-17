@@ -22,7 +22,7 @@ Pages are 1-based. BBoxes are normalized `[x0, y0, x1, y1]`.
 | GET | `/v1/docs/{doc_id}/pages/{page}` | Page PNG (`image/png`) |
 | GET | `/v1/docs/{doc_id}/pages/{page}/regions` | `Region[]` |
 | POST | `/v1/search` | `search_text` / `search_visual` / `search_hybrid` |
-| POST | `/v1/evidence` | `select_regions` |
+| POST | `/v1/evidence` | `select_evidence` |
 | POST | `/v1/verify` | `verify_quote` against the stored region |
 | POST | `/v1/answer` | `grounded_answer` |
 | POST | `/v1/receipt` | `build_receipt` from a `GroundedAnswer` |
@@ -39,7 +39,7 @@ POST /v1/receipt    <GroundedAnswer JSON from /v1/answer>
 
 `mode` is `text` | `visual` | `hybrid`. Default for search and answer is `hybrid`. `strict` defaults to `true`. The overlay only offers those three keys. `bm25` is a CLI/eval retrieve mode on `grounded_answer`, not an overlay button.
 
-`POST /v1/receipt` takes the same `GroundedAnswer` object and returns a receipt: question, answer, abstain, citations, nested verify rows, cited `doc_id` → manifest `sha256`, `ingest_version`, layout engine, retrieve mode, `trace_id`, generator model. Use this so PDF hashes cannot drift from a client-side copy.
+`POST /v1/receipt` takes the same `GroundedAnswer` object and returns a receipt: question, answer, abstain, citations, nested verify rows, cited `doc_id` → manifest `sha256`, `ingest_version`, layout engine, retrieve mode, `trace_id`, generator model. `crops[]` carries `png_base64` of each citation bbox; a missing PNG omits that crop. Use this so PDF hashes cannot drift from a client-side copy.
 
 `POST /v1/answer` returns a `GroundedAnswer`:
 

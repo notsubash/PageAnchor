@@ -53,6 +53,10 @@ Rules:
 - citation.region_id must be one of the provided region_id values.
 - The answer string must be a verbatim substring of at least one citation.quote.
   Use a short extractive span (a name, a number, a title), not a paraphrase.
+- If a provided region already contains a short extractive span that answers
+  the question, you must not abstain. Quote that span.
+- Prefer a methods paragraph, table, or first statement of the fact over a
+  later recap on another page.
 - If the regions do not contain the answer, abstain=true,
   abstain_reason="unanswerable", answer=null, citations=[].
 - Otherwise set abstain=false, a short answer, and at least one citation.
@@ -223,7 +227,7 @@ def _apply_policy(
             )
 
     invalid = generated is None or unknown
-    answer_text = None if invalid else generated.answer
+    answer_text = generated.answer if generated is not None and not unknown else None
     abstain = invalid
     reason: AbstainReason | None = "generator_invalid" if invalid else None
 
@@ -248,7 +252,8 @@ def _apply_policy(
     if strict and result.citations:
         result = apply_strict(result)
     if not result.abstain:
-        if generated is not None and generated.abstain:
+        verified = any(citation.verified for citation in result.citations)
+        if generated is not None and generated.abstain and not verified:
             return result.model_copy(
                 update={"abstain": True, "abstain_reason": "unanswerable", "answer": None}
             )

@@ -64,6 +64,20 @@ export type ReceiptDocument = {
   sha256: string;
 };
 
+export type CorpusDoc = {
+  id: string;
+  title: string;
+  pages: number;
+};
+
+export type ReceiptCrop = {
+  doc_id: string;
+  page: number;
+  region_id: string | null;
+  bbox: BBox;
+  png_base64: string;
+};
+
 export type Receipt = {
   question: string;
   answer: string | null;
@@ -77,10 +91,21 @@ export type Receipt = {
   retrieval_mode: RetrievalMode;
   trace_id: string;
   generator_model: string;
+  crops?: ReceiptCrop[];
 };
 
 export function pagePngUrl(docId: string, page: number): string {
   return `${API}/v1/docs/${encodeURIComponent(docId)}/pages/${page}`;
+}
+
+export async function getCorpus(): Promise<CorpusDoc[]> {
+  const response = await fetch(`${API}/v1/corpus`);
+  const text = await response.text();
+  if (!response.ok) {
+    throw new Error(_detail(text) || response.statusText);
+  }
+  const payload = JSON.parse(text) as { documents?: CorpusDoc[] };
+  return payload.documents ?? [];
 }
 
 export async function postAnswer(body: {

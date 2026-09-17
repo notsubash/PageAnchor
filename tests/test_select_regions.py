@@ -324,3 +324,96 @@ def test_select_evidence_first_pass_follows_reranked_page_order(tmp_path, monkey
         corpus_root=tmp_path,
     )
     assert gold_id in {region.region_id for region in picked}
+
+
+def test_select_evidence_guarantees_top_hit_pages(tmp_path, monkeypatch):
+    monkeypatch.setenv("PAGEANCHOR_CORPUS_ROOT", str(tmp_path))
+    rows = []
+    for page in (1, 7, 8, 13, 20, 21, 22, 23, 24):
+        rows.append(
+            Region(
+                doc_id="arxiv-1804-glue",
+                page=page,
+                region_id=f"arxiv-1804-glue:p{page}:r0",
+                type="text",
+                bbox=(0.0, 0.0, 1.0, 0.2),
+                text=f"GLUE heading page {page} appendix",
+            ).model_dump()
+        )
+    rows.append(
+        Region(
+            doc_id="arxiv-1804-glue",
+            page=2,
+            region_id="arxiv-1804-glue:p2:r_table",
+            type="text",
+            bbox=(0.0, 0.2, 1.0, 0.9),
+            text="MNLI QQP QNLI SST-2 CoLA 8.5k STS-B MRPC RTE WNLI " * 8,
+        ).model_dump()
+    )
+    out = tmp_path / "regions"
+    out.mkdir()
+    (out / "arxiv-1804-glue.json").write_text(json.dumps(rows), encoding="utf-8")
+
+    def embed_query(texts: list[str]) -> list[list[float]]:
+        return [[1.0, 0.0] for _ in texts]
+
+    def embed_passages(texts: list[str]) -> list[list[float]]:
+        return [[1.0, 0.0] if "CoLA 8.5k" in text else [100.0, 0.0] for text in texts]
+
+    picked = select_evidence(
+        "How many CoLA training examples does the GLUE table list?",
+        [
+            PageHit(doc_id="arxiv-1804-glue", page=page, score=1.0, source="hybrid")
+            for page in (7, 2, 8, 13, 1, 20, 21, 22, 23, 24)
+        ],
+        max_regions=5,
+        per_page=2,
+        embed_query=embed_query,
+        embed_passages=embed_passages,
+        corpus_root=tmp_path,
+    )
+    assert any(
+        region.page == 2 and "CoLA 8.5k" in region.text for region in picked
+    )
+    assert {region.page for region in picked} >= {7, 2, 8, 13, 1}
+
+
+def test_slot_regions_loads_longest_when_page_missing_from_ranked(tmp_path, monkeypatch):
+    from pageanchor.ground.regions import _slot_regions
+    from pageanchor.models import ScoredRegion
+
+    monkeypatch.setenv("PAGEANCHOR_CORPUS_ROOT", str(tmp_path))
+    table = Region(
+        doc_id="d",
+        page=2,
+        region_id="d:p2:r0",
+        type="text",
+        bbox=(0.0, 0.0, 1.0, 1.0),
+        text="CoLA 8.5k",
+    )
+    out = tmp_path / "regions"
+    out.mkdir()
+    (out / "d.json").write_text(json.dumps([table.model_dump()]), encoding="utf-8")
+    ranked = [
+        ScoredRegion(
+            doc_id="d",
+            page=9,
+            region_id="d:p9:r0",
+            type="text",
+            bbox=(0.0, 0.0, 1.0, 0.2),
+            text="appendix",
+            score=1.0,
+        )
+    ]
+    picked = _slot_regions(
+        ranked,
+        [
+            PageHit(doc_id="d", page=2, score=0.9, source="hybrid"),
+            PageHit(doc_id="d", page=9, score=0.1, source="hybrid"),
+        ],
+        max_regions=2,
+        per_page=2,
+        corpus_root=tmp_path,
+    )
+    assert picked[0].page == 2
+    assert picked[0].text == "CoLA 8.5k"
