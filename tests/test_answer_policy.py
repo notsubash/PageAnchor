@@ -178,6 +178,31 @@ def test_model_no_hits_reason_becomes_unanswerable():
     assert result.abstain_reason == "unanswerable"
 
 
+def test_verified_citation_keeps_answer_even_if_model_abstains():
+    region = _region("Hello THE_TOKEN_42")
+
+    def fake_generate(question, regions):
+        return GeneratorOutput(
+            answer="THE_TOKEN_42",
+            abstain=True,
+            abstain_reason="unanswerable",
+            citations=[
+                GeneratorCitation(region_id=region.region_id, quote="THE_TOKEN_42")
+            ],
+        )
+
+    result = grounded_answer(
+        "What is the token?",
+        "text",
+        hits=[PageHit(doc_id="hello", page=1, score=1.0, source="text")],
+        regions=[region],
+        generate=fake_generate,
+    )
+    assert result.abstain is False
+    assert result.answer == "THE_TOKEN_42"
+    assert result.citations[0].verified is True
+
+
 def test_verify_failed_wins_over_model_abstain():
     region = _region("THE_TOKEN_42 is on the page")
 

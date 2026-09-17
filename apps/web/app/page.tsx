@@ -44,6 +44,26 @@ function hitView(docId: string, page: number): PageView {
   return { doc_id: docId, page, bbox: null, region_id: null };
 }
 
+function browsePage(
+  current: PageView,
+  page: number,
+  shown: GroundedAnswer | null,
+): PageView {
+  const citation = shown?.citations.find(
+    (item) => item.doc_id === current.doc_id && item.page === page,
+  );
+  if (citation) {
+    return citationView(citation);
+  }
+  const region = shown?.trace.regions.find(
+    (item) => item.doc_id === current.doc_id && item.page === page,
+  );
+  if (region) {
+    return regionView(region);
+  }
+  return { doc_id: current.doc_id, page, bbox: null, region_id: null };
+}
+
 function defaultView(answer: GroundedAnswer): PageView | null {
   if (answer.citations[0]) {
     return citationView(answer.citations[0]);
@@ -364,12 +384,7 @@ export default function Home() {
                   className="ghost"
                   disabled={view.page <= 1}
                   onClick={() =>
-                    setView({
-                      doc_id: view.doc_id,
-                      page: view.page - 1,
-                      bbox: null,
-                      region_id: null,
-                    })
+                    setView(browsePage(view, view.page - 1, shown))
                   }
                 >
                   Prev
@@ -379,12 +394,7 @@ export default function Home() {
                   className="ghost"
                   disabled={view.page >= (docs[view.doc_id]?.pages ?? view.page)}
                   onClick={() =>
-                    setView({
-                      doc_id: view.doc_id,
-                      page: view.page + 1,
-                      bbox: null,
-                      region_id: null,
-                    })
+                    setView(browsePage(view, view.page + 1, shown))
                   }
                 >
                   Next

@@ -161,6 +161,23 @@ def test_apply_canonical_keeps_cpi_answer_when_year_matches():
     assert question_constraints("What is the token?") is None
 
 
+def test_apply_canonical_year_can_match_doc_id():
+    cited = _region(
+        "bls-cpi-20250115",
+        2,
+        "Table A. Percent changes in CPI for All Urban Consumers (CPI-U): U.S. city average",
+    )
+    question = "What is the title of Table A in the January 2025 CPI release?"
+    quote = "Table A. Percent changes in CPI for All Urban Consumers (CPI-U): U.S. city average"
+    result = apply_canonical(
+        _answer(question, quote, cited, quote),
+        [cited],
+    )
+    assert result.abstain is False
+    assert result.answer == quote
+    assert result.citations[0].verified is True
+
+
 def test_canonical_rewrites_case_to_methods_page():
     cited = _region(
         "arxiv-2407-colpali",

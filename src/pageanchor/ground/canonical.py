@@ -217,6 +217,7 @@ def apply_canonical(
             for citation in rewritten
             if citation.region_id in by_id
         ]
+        texts.extend(citation.doc_id for citation in rewritten)
         if not any(all(year in text for year in years) for text in texts):
             return result.model_copy(
                 update={"abstain": True, "abstain_reason": "unanswerable", "answer": None}
